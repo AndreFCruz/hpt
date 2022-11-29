@@ -12,8 +12,11 @@ It's essentially a set of helpful wrappers over optuna.
 
 ## Install
 
+Install package from [PyPI](https://pypi.org/project/hyperparameter-tuning/):
+
+
 `
-pip install hpt
+pip install hyperparameter-tuning
 `
 
 ## Getting started

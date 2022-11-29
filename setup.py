@@ -61,7 +61,7 @@ with VERSION_PATH.open('rb') as version_file:
 #                                   SETUP                                      #
 # ---------------------------------------------------------------------------- #
 setup(
-    name="hpt",
+    name="hyperparameter-tuning",
     version=__version__,
     description="A minimal framework for running hyperparameter tuning",
     keywords=["ml", "optimization", "hyperparameter", "tuning", "fairness"],

@@ -3,6 +3,7 @@ and fairness metrics, possibly at a specified FPR or FNR target.
 """
 
 import math
+import logging
 from typing import Optional
 
 import numpy as np
@@ -216,19 +217,66 @@ def compute_binary_predictions(
         positive_preds_budget = math.floor(ppr * total)
         target_samples_mask = np.ones_like(y_true_sorted).astype(bool) # all samples
 
+    # Indices of target samples (relevant for the target metric), ordered by descending score
+    target_samples_indices = y_pred_sorted_indices[target_samples_mask]
+
     # Find the threshold at which the specified numerator_budget is met
-    threshold_idx = y_pred_sorted_indices[target_samples_mask][positive_preds_budget]
+    threshold_idx = target_samples_indices[positive_preds_budget]
     threshold = y_pred_scores[threshold_idx]
 
+    ####################################
+    # Code for random untying follows: #
+    ####################################
+    import ipdb; ipdb.set_trace()
     # TODO: https://github.com/AndreFCruz/hpt/issues/1
     y_pred_binary = (y_pred_scores >= threshold).astype(int)
-    rng = np.random.RandomState(random_seed)
 
-    # 1. check if exact target number of positive predictions was met;
+    # 1. compute actual number of positive predictions (on relevant target samples)
+    actual_pos_preds = np.sum(y_pred_binary[target_samples_indices])
 
-    # 2. if not, compute number of extra predicted positives;
+    # 2. check if this number corresponds to the target
+    if actual_pos_preds != positive_preds_budget:
+        logging.warning(
+            "Target metric for thresholding could not be met, will randomly "
+            "untie samples with the same predicted score to fulfill target."
+        )
 
-    # 3. randomly select among the predicted positives with the same score prediction, and give them a negative prediction;
+        assert actual_pos_preds > positive_preds_budget, (
+            "Sanity check: actual number of positive predictions should always "
+            "be higher or equal to the target number when following this "
+            f"algorithm; got actual={actual_pos_preds}, target={positive_preds_budget};"
+        )
+
+        # 2.1. if target was not met, compute number of extra predicted positives
+        extra_pos_preds = actual_pos_preds - positive_preds_budget
+
+        # 2.2. randomly select extra_pos_preds among the relevant
+        # samples (either TPs or FPs or PPs) with the same score
+        rng = np.random.RandomState(random_seed)
+
+        samples_at_target_threshold_mask = (y_pred_scores[y_pred_sorted_indices] == threshold)
+
+        target_samples_at_target_threshold_indices = (
+            y_pred_sorted_indices[
+                samples_at_target_threshold_mask &      # Filter for samples at target threshold
+                target_samples_mask                     # Filter for relevant (target) samples
+            ]
+        )
+
+        # The extra number of positive predictions must be fully explained by this score tie
+        assert extra_pos_preds < len(target_samples_at_target_threshold_indices)
+
+        extra_pos_preds_indices = rng.choice(
+            target_samples_at_target_threshold_indices,
+            size=extra_pos_preds,
+            replace=False)
+
+        # 2.3. give extra_pos_preds_indices a negative prediction
+        y_pred_binary[extra_pos_preds_indices] = 0
+
+
+    # Sanity check: the number of positive_preds_budget should now be exactly fulfilled
+    assert np.sum(y_pred_binary[target_samples_indices]) == positive_preds_budget
 
     return y_pred_binary
 

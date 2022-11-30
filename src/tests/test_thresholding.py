@@ -110,33 +110,32 @@ def test_scores_binarization(
     )
 
 
-# TODO: uncomment when this function is done
-# def test_scores_binarization_with_ties(
-#         y_true: np.ndarray,
-#         y_pred_scores_with_ties: np.ndarray,
-#         threshold_target_metric: str,
-#         threshold_target_metric_value: float,
-#     ):
-#     """Tests hpt package score binarization **with** score ties!
-#     """
-#     # Binarize predictions
-#     from hpt.evaluation import compute_binary_predictions
-#     y_pred_binary = compute_binary_predictions(
-#         y_true, y_pred_scores_with_ties,
-#         random_seed=RANDOM_SEED,
-#         **{threshold_target_metric: threshold_target_metric_value},
-#     )
+def test_scores_binarization_with_ties(
+        y_true: np.ndarray,
+        y_pred_scores_with_ties: np.ndarray,
+        threshold_target_metric: str,
+        threshold_target_metric_value: float,
+    ):
+    """Tests hpt package score binarization **with** score ties!
+    """
+    # Binarize predictions
+    from hpt.evaluation import compute_binary_predictions
+    y_pred_binary = compute_binary_predictions(
+        y_true, y_pred_scores_with_ties,
+        random_seed=RANDOM_SEED,
+        **{threshold_target_metric: threshold_target_metric_value},
+    )
 
-#     # Evaluate predictions
-#     from hpt.evaluation import evaluate_performance
-#     results = evaluate_performance(y_true, y_pred_binary)
+    # Evaluate predictions
+    from hpt.evaluation import evaluate_performance
+    results = evaluate_performance(y_true, y_pred_binary)
 
-#     # Assert target metric is approximately met
-#     assert np.isclose(
-#         threshold_target_metric_value,
-#         results[threshold_target_metric],
-#         atol=10 / len(y_true),
-#     ), (
-#         f"Targeting {threshold_target_metric_value:.3%} {threshold_target_metric.upper()}, "
-#         f"got {results[threshold_target_metric]:.3%}"
-#     )
+    # Assert target metric is approximately met
+    assert np.isclose(
+        threshold_target_metric_value,
+        results[threshold_target_metric],
+        atol=10 / len(y_true),
+    ), (
+        f"Targeting {threshold_target_metric_value:.3%} {threshold_target_metric.upper()}, "
+        f"got {results[threshold_target_metric]:.3%}"
+    )

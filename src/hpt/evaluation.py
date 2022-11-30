@@ -28,6 +28,7 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
         A dictionary with key-value pairs of (metric name, metric value).
     """
     # Compute confusion matrix
+    import ipdb; ipdb.set_trace()
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
 
     total = tn + fp + fn + tp

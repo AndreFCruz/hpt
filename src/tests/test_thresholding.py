@@ -3,9 +3,10 @@
 
 import pytest
 import numpy as np
+from .utils import get_metric_denominator
 
 # Number of samples used for testing
-NUM_SAMPLES = 100_000
+NUM_SAMPLES = 10_000
 RANDOM_SEED = 42
 
 
@@ -14,7 +15,7 @@ def rng():
     return np.random.RandomState(RANDOM_SEED)
 
 
-@pytest.fixture(params=[0.05, 0.10, 0.25, 0.50])
+@pytest.fixture(params=[0.01, 0.05, 0.25, 0.50, 0.75, 0.95, 0.99])
 def prevalence(request) -> float:
     return request.param
 
@@ -103,7 +104,9 @@ def test_scores_binarization(
     assert np.isclose(
         threshold_target_metric_value,
         results[threshold_target_metric],
-        atol=0.001,                             # absolute tolerance: 0.1%
+        rtol=0.0,
+        atol=1 / get_metric_denominator(y_true, threshold_target_metric),
+        # ^ tolerance of at most one mistake over relevant samples
     ), (
         f"Targeting {threshold_target_metric_value:.3%} {threshold_target_metric.upper()}, "
         f"got {results[threshold_target_metric]:.3%}"
@@ -134,7 +137,9 @@ def test_scores_binarization_with_ties(
     assert np.isclose(
         threshold_target_metric_value,
         results[threshold_target_metric],
-        atol=10 / len(y_true),
+        rtol=0.0,
+        atol=1 / get_metric_denominator(y_true, threshold_target_metric),
+        # ^ tolerance of at most one mistake over relevant samples
     ), (
         f"Targeting {threshold_target_metric_value:.3%} {threshold_target_metric.upper()}, "
         f"got {results[threshold_target_metric]:.3%}"

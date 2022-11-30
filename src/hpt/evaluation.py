@@ -221,11 +221,16 @@ def compute_binary_predictions(
     threshold = y_pred_scores[threshold_idx]
 
     # TODO: https://github.com/AndreFCruz/hpt/issues/1
-    # - check if target number of positive predictions was met;
-    # - untie among the rest if the target positive_preds_budget was not met without ties.
+    y_pred_binary = (y_pred_scores >= threshold).astype(int)
     rng = np.random.RandomState(random_seed)
-    # ...
-    return (y_pred_scores >= threshold).astype(int)
+
+    # 1. check if exact target number of positive predictions was met;
+
+    # 2. if not, compute number of extra predicted positives;
+
+    # 3. randomly select among the predicted positives with the same score prediction, and give them a negative prediction;
+
+    return y_pred_binary
 
 
 

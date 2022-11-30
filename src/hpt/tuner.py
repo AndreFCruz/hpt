@@ -9,6 +9,7 @@ from functools import partial
 from inspect import signature
 from typing import Callable, Optional, Union, List
 
+import pandas as pd
 import numpy as np
 import optuna
 from optuna import samplers
@@ -32,6 +33,7 @@ class ObjectiveFunction:
 
     @dataclasses.dataclass
     class TrialResults:
+        id: int
         hyperparameters: dict
         validation_results: dict
         train_results: dict = None
@@ -153,6 +155,16 @@ class ObjectiveFunction:
     
     @property
     def results(self):
+        return pd.DataFrame(
+            data=[{
+                'algorithm': r.algorithm,
+                **r.validation_results,
+            } for r in self._models_results],
+            index=[r.id for r in self._models_results],
+        )
+    
+    @property
+    def all_results(self):
         return self._models_results
 
     # NOTE: I don't love this constructor API, feels cluttered
@@ -214,7 +226,12 @@ class ObjectiveFunction:
 
         # Store trial's results
         self._models_results.append(
-            self.TrialResults(hyperparams, val_results, model=model))
+            self.TrialResults(
+                id=trial.trial_id,
+                hyperparameters=hyperparams,
+                validation_results=val_results,
+                model=model
+            ))
 
         # Return scalarized evaluation metric
         if self.other_eval_metric:
@@ -249,16 +266,10 @@ class ObjectiveFunction:
 
         try:
             import seaborn as sns
-            import pandas as pd
             from matplotlib import pyplot as plt
 
-            data = pd.DataFrame([{
-                'algorithm': r.algorithm,
-                **r.validation_results,
-            } for r in self.results])
-
             sns.set()
-            sns.scatterplot(data, x=x_axis, y=y_axis, **kwargs)
+            sns.scatterplot(self.results, x=x_axis, y=y_axis, **kwargs)
 
             if pyplot_show:
                 plt.show()

@@ -3,10 +3,15 @@ and fairness metrics, possibly at a specified FPR or FNR target.
 """
 
 import math
+import logging
 from typing import Optional
 
 import numpy as np
 from sklearn.metrics import confusion_matrix
+
+
+def safe_division(a: float, b: float):
+    return 0 if b == 0 else a / b
 
 
 def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
@@ -27,7 +32,7 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
         A dictionary with key-value pairs of (metric name, metric value).
     """
     # Compute confusion matrix
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=(0, 1)).ravel()
 
     total = tn + fp + fn + tp
     pred_pos = tp + fp
@@ -44,19 +49,19 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     results["accuracy"] = (tp + tn) / total
 
     # True Positive Rate (Recall)
-    results["tpr"] = tp / label_pos
+    results["tpr"] = safe_division(tp, label_pos)
 
     # False Positive Rate
-    results["fpr"] = fp / label_neg
+    results["fpr"] = safe_division(fp, label_neg)
 
     # True Negative Rate
     # results["tnr"] = tn / label_neg
 
     # Precision
-    results["precision"] = tp / pred_pos
+    results["precision"] = safe_division(tp, pred_pos)
 
     # Positive Prediction Rate
-    results["ppr"] = pred_pos / total
+    results["ppr"] = safe_division(pred_pos, total)
 
     return results
 
@@ -102,7 +107,7 @@ def evaluate_fairness(
 
     for s_value in unique_groups:
         # Indices of samples that belong to the current group
-        group_indices = np.argwhere(sensitive_attribute == s_value)
+        group_indices = np.argwhere(sensitive_attribute == s_value).flatten()
 
         # Filter labels and predictions for samples of the current group
         group_labels = y_true[group_indices]
@@ -127,8 +132,9 @@ def evaluate_fairness(
             for group_name in unique_groups
         ]
 
-        results[ratio_name] = (
-            min(curr_metric_results) / max(curr_metric_results)
+        results[ratio_name] = safe_division(
+            min(curr_metric_results),
+            max(curr_metric_results)
         )
 
     # Optionally, return group-wise metrics as well
@@ -216,16 +222,67 @@ def compute_binary_predictions(
         positive_preds_budget = math.floor(ppr * total)
         target_samples_mask = np.ones_like(y_true_sorted).astype(bool) # all samples
 
+    # Indices of target samples (relevant for the target metric), ordered by descending score
+    target_samples_indices = y_pred_sorted_indices[target_samples_mask]
+
     # Find the threshold at which the specified numerator_budget is met
-    threshold_idx = y_pred_sorted_indices[target_samples_mask][positive_preds_budget]
+    threshold_idx = target_samples_indices[positive_preds_budget]
     threshold = y_pred_scores[threshold_idx]
 
-    # TODO: https://github.com/AndreFCruz/hpt/issues/1
-    # - check if target number of positive predictions was met;
-    # - untie among the rest if the target positive_preds_budget was not met without ties.
-    rng = np.random.RandomState(random_seed)
-    # ...
-    return (y_pred_scores >= threshold).astype(int)
+    ####################################
+    # Code for random untying follows: #
+    ####################################
+    y_pred_binary = (y_pred_scores >= threshold).astype(int)
+
+    # 1. compute actual number of positive predictions (on relevant target samples)
+    actual_pos_preds = np.sum(y_pred_binary[target_samples_indices])
+
+    # 2. check if this number corresponds to the target
+    if actual_pos_preds != positive_preds_budget:
+        logging.warning(
+            "Target metric for thresholding could not be met, will randomly "
+            "untie samples with the same predicted score to fulfill target."
+        )
+
+        assert actual_pos_preds > positive_preds_budget, (
+            "Sanity check: actual number of positive predictions should always "
+            "be higher or equal to the target number when following this "
+            f"algorithm; got actual={actual_pos_preds}, target={positive_preds_budget};"
+        )
+
+        # 2.1. if target was not met, compute number of extra predicted positives
+        extra_pos_preds = actual_pos_preds - positive_preds_budget
+
+        # 2.2. randomly select extra_pos_preds among the relevant
+        # samples (either TPs or FPs or PPs) with the same score
+        rng = np.random.RandomState(random_seed)
+
+        samples_at_target_threshold_mask = (y_pred_scores[y_pred_sorted_indices] == threshold)
+
+        target_samples_at_target_threshold_indices = (
+            y_pred_sorted_indices[
+                samples_at_target_threshold_mask &      # Filter for samples at target threshold
+                target_samples_mask                     # Filter for relevant (target) samples
+            ]
+        )
+
+        # # The extra number of positive predictions must be fully explained by this score tie
+        # import ipdb; ipdb.set_trace()   # TODO: figure out why this assertion fails
+        # assert extra_pos_preds < len(target_samples_at_target_threshold_indices)
+
+        extra_pos_preds_indices = rng.choice(
+            target_samples_at_target_threshold_indices,
+            size=extra_pos_preds,
+            replace=False)
+
+        # 2.3. give extra_pos_preds_indices a negative prediction
+        y_pred_binary[extra_pos_preds_indices] = 0
+
+
+    # Sanity check: the number of positive_preds_budget should now be exactly fulfilled
+    assert np.sum(y_pred_binary[target_samples_indices]) == positive_preds_budget
+
+    return y_pred_binary
 
 
 

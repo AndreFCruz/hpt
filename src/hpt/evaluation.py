@@ -10,6 +10,10 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 
 
+def safe_division(a: float, b: float):
+    return 0 if b == 0 else a / b
+
+
 def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     """Evaluates the provided predictions on common performance metrics.
     NOTE: currently assumes labels and predictions are binary - should we extend
@@ -45,19 +49,19 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     results["accuracy"] = (tp + tn) / total
 
     # True Positive Rate (Recall)
-    results["tpr"] = tp / label_pos
+    results["tpr"] = safe_division(tp, label_pos)
 
     # False Positive Rate
-    results["fpr"] = fp / label_neg
+    results["fpr"] = safe_division(fp, label_neg)
 
     # True Negative Rate
     # results["tnr"] = tn / label_neg
 
     # Precision
-    results["precision"] = tp / pred_pos
+    results["precision"] = safe_division(tp, pred_pos)
 
     # Positive Prediction Rate
-    results["ppr"] = pred_pos / total
+    results["ppr"] = safe_division(pred_pos, total)
 
     return results
 
@@ -128,8 +132,9 @@ def evaluate_fairness(
             for group_name in unique_groups
         ]
 
-        results[ratio_name] = (
-            min(curr_metric_results) / max(curr_metric_results)
+        results[ratio_name] = safe_division(
+            min(curr_metric_results),
+            max(curr_metric_results)
         )
 
     # Optionally, return group-wise metrics as well

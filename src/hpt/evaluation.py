@@ -9,6 +9,8 @@ from typing import Optional
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
+from .utils.fairness_criteria import CriteriaData
+
 
 def safe_division(a: float, b: float):
     return 0 if b == 0 else a / b
@@ -293,8 +295,8 @@ def compute_binary_predictions_posthoc_adjustment(
         equalize_fpr: Optional[bool] = False,
         false_negative_cost: Optional[float] = 1,
         false_positive_cost: Optional[float] = 1,
-        allowed_tpr_gap: Optional[float] = 0.0,
-        allowed_fpr_gap: Optional[float] = 0.0,
+        # allowed_tpr_gap: Optional[float] = 0.0,
+        # allowed_fpr_gap: Optional[float] = 0.0,
         random_seed: Optional[int] = 42,
     ) -> np.ndarray:
     """Discretizes the given score predictions into binary labels, according
@@ -309,17 +311,17 @@ def compute_binary_predictions_posthoc_adjustment(
     sensitive_attribute : np.ndarray
         Sensitive attribute representing the group each sample belongs to.
     equalize_tpr : Optional[bool], optional
-        Whether to equalize group-wise TPR, by default False
+        Whether to equalize group-wise TPR, by default False.
     equalize_fpr : Optional[bool], optional
-        Whether to equalize group-wise FPR, by default False
+        Whether to equalize group-wise FPR, by default False.
     false_negative_cost : Optional[float], optional
-        The cost of a false negative (FN) prediction, by default 1
+        The cost of a false negative (FN) prediction, by default 1.
     false_positive_cost : Optional[float], optional
-        The cost of a false positive (FP) prediction, by default 1
+        The cost of a false positive (FP) prediction, by default 1.
     allowed_tpr_gap : Optional[float], optional
-        The allowed gap in group-wise TPR (if any), by default 0
+        The allowed gap in group-wise TPR (if any), by default 0.
     allowed_fpr_gap : Optional[float], optional
-        The allowed gap in group-wise FPR (if any), by default 0
+        The allowed gap in group-wise FPR (if any), by default 0.
     random_seed : Optional[int], optional
         The random seed used in case some prediction randomization is required
         (e.g.,  in the case of equal odds - equalizing both TPR and FPR).
@@ -331,11 +333,55 @@ def compute_binary_predictions_posthoc_adjustment(
     """
     assert equalize_fpr or equalize_tpr, \
         "Must target either equal FPR or equal TPR or both, got neither."
+    
+    # The threshold is computed from the ratio of FPs and FNs,
+    # and assumes the underlying classifier is approximately calibrated
+    # i.e., a threshold of t=0.5 indicates equal likelihood of paying the FP
+    # cost or the FN cost
+    threshold = false_positive_cost / (false_positive_cost + false_negative_cost)
 
-    rng = np.random.RandomState(random_seed)
-    # TODO: https://github.com/AndreFCruz/hpt/issues/2
+    # Generate DataFrames for CDF, Performance, and Total per group, where:
+    # > cdf[group_][score_] = proportion of members of group_ with score below score_
+    cdf = ...           # TODO...
 
+    # > perf[group_][score_] = proportion of members of that group_ and score_ that have a positive label
+    performance = ...   # TODO...
 
+    # > totals[group_] = total number of group_ members
+    totals = {}
 
+    # Construct CriteriaData object to compute fairness criteria and thresholds
+    data = CriteriaData(cdfs, performance, totals)
 
-    pass
+    # > groupwise_thresholds[group_] = threshold used for group_
+    # TODO: check if it is 1{f(X) >= threshold} or 1{f(X) > threshold}
+    groupwise_thresholds: dict
+    if equalize_tpr and equalize_fpr:   # Equal odds
+
+        # TODO
+        # - use data.two_sided_optimum to get optimal Equal Odds point (under all ROC curves)
+        # - somehow binarize predictions such that this is met (with randomization for a portion of predictions)
+
+        rng = np.random.RandomState(random_seed)
+        pass
+
+    elif equalize_tpr:                  # Equal opportunity among Y=1
+        groupwise_thresholds = data.opportunity_cutoffs(target_rate=threshold)
+    
+    elif equalize_fpr:                  # Equal opportunity among Y=0
+        raise NotImplementedError(
+            "Equalizing TNR or FPR is not yet implemented as a fairness "
+            "criterion."
+        )
+    
+    # Binarize predictions with the given thresholds
+    y_pred_binary = np.zeros_like(y_true)
+
+    unique_groups = np.unique(sensitive_attribute)
+    for group_ in unique_groups:
+        group_mask = sensitive_attribute == group_
+        y_pred_binary[group_mask] = (
+            y_pred_scores[group_mask] >= groupwise_thresholds[group_]
+        ).astype(int)
+    
+    return y_pred_binary

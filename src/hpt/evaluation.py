@@ -285,15 +285,16 @@ def compute_binary_predictions(
     return y_pred_binary
 
 
-
 def compute_binary_predictions_posthoc_adjustment(
         y_true: np.ndarray,
         y_pred_scores: np.ndarray,
         sensitive_attribute: np.ndarray,
-        equalize_fpr: Optional[bool] = False,
         equalize_tpr: Optional[bool] = False,
-        allowed_fpr_gap: Optional[float] = None,
-        allowed_tpr_gap: Optional[float] = None,
+        equalize_fpr: Optional[bool] = False,
+        false_negative_cost: Optional[float] = 1,
+        false_positive_cost: Optional[float] = 1,
+        allowed_tpr_gap: Optional[float] = 0.0,
+        allowed_fpr_gap: Optional[float] = 0.0,
         random_seed: Optional[int] = 42,
     ) -> np.ndarray:
     """Discretizes the given score predictions into binary labels, according
@@ -307,14 +308,18 @@ def compute_binary_predictions_posthoc_adjustment(
         Predictions as a continuous score between 0 and 1.
     sensitive_attribute : np.ndarray
         Sensitive attribute representing the group each sample belongs to.
-    equalize_fpr : Optional[bool], optional
-        Whether to equalize group-wise FPR, by default False
     equalize_tpr : Optional[bool], optional
         Whether to equalize group-wise TPR, by default False
-    allowed_fpr_gap : Optional[float], optional
-        The allowed gap in group-wise FPR (if any).
+    equalize_fpr : Optional[bool], optional
+        Whether to equalize group-wise FPR, by default False
+    false_negative_cost : Optional[float], optional
+        The cost of a false negative (FN) prediction, by default 1
+    false_positive_cost : Optional[float], optional
+        The cost of a false positive (FP) prediction, by default 1
     allowed_tpr_gap : Optional[float], optional
-        The allowed gap in group-wise TPR (if any).
+        The allowed gap in group-wise TPR (if any), by default 0
+    allowed_fpr_gap : Optional[float], optional
+        The allowed gap in group-wise FPR (if any), by default 0
     random_seed : Optional[int], optional
         The random seed used in case some prediction randomization is required
         (e.g.,  in the case of equal odds - equalizing both TPR and FPR).

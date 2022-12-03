@@ -21,8 +21,8 @@ def random_seed(request) -> int:
 
 
 @pytest.fixture
-def rng(random_seed):
-    return np.random.RandomState(random_seed)
+def rng(random_seed) -> np.random.Generator:
+    return np.random.default_rng(random_seed)
 
 
 @pytest.fixture(params=[0.01, 0.05, 0.25, 0.50, 0.75, 0.95, 0.99])
@@ -31,14 +31,14 @@ def prevalence(request) -> float:
 
 
 @pytest.fixture
-def y_true(prevalence: float, rng: np.random.RandomState) -> np.ndarray:
+def y_true(prevalence: float, rng: np.random.Generator) -> np.ndarray:
     assert 0 <= prevalence <= 1
     # Generate labels
     return (rng.random(NUM_SAMPLES) <= prevalence).astype(int)
 
 
 @pytest.fixture
-def y_pred_scores(rng: np.random.RandomState) -> np.ndarray:
+def y_pred_scores(rng: np.random.Generator) -> np.ndarray:
     return rng.random(NUM_SAMPLES)
 
 
@@ -48,7 +48,7 @@ def num_score_bins(request) -> int:
 
 
 @pytest.fixture
-def y_pred_scores_with_ties(num_score_bins: int, rng: np.random.RandomState) -> np.ndarray:
+def y_pred_scores_with_ties(num_score_bins: int, rng: np.random.Generator) -> np.ndarray:
     """Randomly generates score predictions with ties.
 
     NOTE
@@ -66,7 +66,7 @@ def y_pred_scores_with_ties(num_score_bins: int, rng: np.random.RandomState) -> 
     num_score_bins : int
         Number of bins used to discretize scores.
 
-    rng : np.random.RandomState
+    rng : np.random.Generator
         Random number generator.
 
     Returns

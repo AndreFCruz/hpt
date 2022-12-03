@@ -204,16 +204,26 @@ def compute_binary_predictions_posthoc_adjustment(
     # cost or the FN cost
     threshold = false_positive_cost / (false_positive_cost + false_negative_cost)
 
-    # Construct CDF and Performance arrays to compute fairness criteria
-    data = pd.DataFrame({
-        'score': y_pred_scores,
-        'group': sensitive_attribute,
-        'label': y_true,
-    })
-
+    # TODO: remove this discretization in the future???
+    n_score_bins = 200
+    y_pred_scores = (y_pred_scores * n_score_bins).astype(int) / n_score_bins
+    # for now it makes things easier if we just use a fixed number of thresholds
+    # (this, however, will create many ties...)
     import ipdb; ipdb.set_trace()
 
-    cdfs = data.groupby(['score', 'group']).cumsum()
+    # Construct CDF and Performance arrays to compute fairness criteria
+    unique_groups = np.unique(sensitive_attribute)
+
+    data = pd.DataFrame({
+        'score': y_pred_scores,
+        'label': y_true,
+        **{
+            f'group={group}': (sensitive_attribute == group).astype(int)
+            for group in unique_groups
+        },
+    })
+
+    cdfs = data.groupby(['score', 'label']).cumsum()
 
 
 

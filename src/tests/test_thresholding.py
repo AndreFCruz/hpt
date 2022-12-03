@@ -3,8 +3,11 @@
 
 import pytest
 import numpy as np
+
+from hpt.evaluation import evaluate_performance
+from hpt.binarize import compute_binary_predictions
+
 from .utils import get_metric_denominator
-from .fixtures import *
 
 
 @pytest.fixture(params=["tpr", "fpr", "ppr"])
@@ -28,7 +31,6 @@ def test_scores_binarization(
     """
 
     # Binarize predictions
-    from hpt.evaluation import compute_binary_predictions
     y_pred_binary = compute_binary_predictions(
         y_true, y_pred_scores,
         random_seed=random_seed,
@@ -36,7 +38,6 @@ def test_scores_binarization(
     )
 
     # Evaluate predictions
-    from hpt.evaluation import evaluate_performance
     results = evaluate_performance(y_true, y_pred_binary)
 
     # Assert target metric is approximately met
@@ -62,7 +63,6 @@ def test_scores_binarization_with_ties(
     """Tests hpt package score binarization **with** score ties!
     """
     # Binarize predictions
-    from hpt.evaluation import compute_binary_predictions
     y_pred_binary = compute_binary_predictions(
         y_true, y_pred_scores_with_ties,
         random_seed=random_seed,
@@ -70,7 +70,6 @@ def test_scores_binarization_with_ties(
     )
 
     # Evaluate predictions
-    from hpt.evaluation import evaluate_performance
     results = evaluate_performance(y_true, y_pred_binary)
 
     # Assert target metric is approximately met

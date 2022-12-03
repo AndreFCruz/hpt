@@ -19,8 +19,9 @@ from .suggest import suggest_callable_hyperparams
 from .evaluation import (
     evaluate_performance,
     evaluate_fairness,
-    compute_binary_predictions,
+    evaluate_predictions,
 )
+from .binarize import compute_binary_predictions
 
 from .utils.api import BaseLearner
 from .utils.load_yaml import load_hyperparameter_space
@@ -46,49 +47,6 @@ class ObjectiveFunction:
                 self.hyperparameters['classpath'])
 
             self.algorithm = match['algorithm']
-
-    @staticmethod
-    def evaluate_predictions(
-            y_true: np.ndarray,
-            y_pred_scores: np.ndarray,
-            sensitive_attribute: Optional[np.ndarray] = None,
-            **threshold_target,
-        ) -> dict:
-        """Evaluates the given predictions on both performance and fairness
-        metrics (if `sensitive_attribute` is provided).
-
-        Parameters
-        ----------
-        y_true : np.ndarray
-            The true labels.
-        y_pred_scores : np.ndarray
-            The predicted scores.
-        sensitive_attribute : np.ndarray
-            The sensitive attribute - which protected group each sample belongs
-            to.
-
-        Returns
-        -------
-        dict
-            A dictionary of (key, value) -> (metric_name, metric_value).
-        """
-
-        # Binarize predictions according to the given threshold target
-        y_pred_binary = compute_binary_predictions(
-            y_true, y_pred_scores, **threshold_target,
-        )
-
-        # Compute global performance metrics
-        results = evaluate_performance(y_true, y_pred_binary)
-
-        # (Optionally) Compute fairness metrics
-        if sensitive_attribute is not None:
-            results.update(evaluate_fairness(
-                y_true, y_pred_binary, sensitive_attribute,
-                return_groupwise_metrics=False,
-            ))
-
-        return results
     
     @staticmethod
     def instantiate_model(classpath: str, **hyperparams) -> BaseLearner:
@@ -194,7 +152,7 @@ class ObjectiveFunction:
         self.other_eval_metric = other_eval_metric
         self.alpha = alpha
         assert alpha is None or (0 <= alpha <= 1)
-        self.eval_func = eval_func or ObjectiveFunction.evaluate_predictions
+        self.eval_func = eval_func or evaluate_predictions
         self.eval_func = partial(self.eval_func, **threshold_target)
 
         # Store all results in a list as models are trained

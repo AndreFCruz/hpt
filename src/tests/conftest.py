@@ -1,4 +1,11 @@
-"""Common pytest fixtures to be used in different tests."""
+"""Common pytest fixtures to be used in different tests.
+
+NOTE: file name must be "onftest.py" to enable sharing fixtures across multiple
+files.
+
+Pytest reference:
+https://docs.pytest.org/en/6.2.x/fixture.html#conftest-py-sharing-fixtures-across-multiple-files
+"""
 
 import pytest
 import numpy as np

@@ -224,8 +224,7 @@ def compute_binary_predictions_posthoc_adjustment(
     })
 
     cdfs = data.groupby(['score', 'label']).cumsum()
-
-
+    # TODO: construct CDF array and Performance array (perhaps separately, this is getting tricky...)
 
 
     # # Unique groups

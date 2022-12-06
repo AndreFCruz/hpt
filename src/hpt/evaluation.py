@@ -7,6 +7,8 @@ from typing import Optional
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
+from .binarize import compute_binary_predictions
+
 
 def safe_division(a: float, b: float):
     return 0 if b == 0 else a / b

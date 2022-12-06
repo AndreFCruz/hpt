@@ -2,7 +2,7 @@
 """
 
 import logging
-from collections import Iterable
+from collections.abc import Iterable
 from typing import Tuple
 
 import pytest
@@ -60,15 +60,16 @@ def sensitive_attribute(
     )
 
 
-def test_scores_binarization_equal_tpr(
-        y_true: np.ndarray,
-        y_pred_scores: np.ndarray,
-        sensitive_attribute: np.ndarray,
-        random_seed: int,
-    ):
+# TODO!
+# def test_scores_binarization_equal_tpr(
+#         y_true: np.ndarray,
+#         y_pred_scores: np.ndarray,
+#         sensitive_attribute: np.ndarray,
+#         random_seed: int,
+#     ):
 
-    import ipdb; ipdb.set_trace()
-    y_pred_binary = compute_binary_predictions_posthoc_adjustment(
-        y_true, y_pred_scores, sensitive_attribute, equalize_tpr=True,
-    )
+#     import ipdb; ipdb.set_trace()
+#     y_pred_binary = compute_binary_predictions_posthoc_adjustment(
+#         y_true, y_pred_scores, sensitive_attribute, equalize_tpr=True,
+#     )
 

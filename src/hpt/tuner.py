@@ -185,7 +185,7 @@ class ObjectiveFunction:
         # Store trial's results
         self._models_results.append(
             self.TrialResults(
-                id=trial.trial_id,
+                id=trial.number,
                 hyperparameters=hyperparams,
                 validation_results=val_results,
                 model=model

@@ -21,7 +21,6 @@ from .evaluation import (
     evaluate_fairness,
     evaluate_predictions,
 )
-from .binarize import compute_binary_predictions
 
 from .utils.api import BaseLearner
 from .utils.load_yaml import load_hyperparameter_space
@@ -124,6 +123,21 @@ class ObjectiveFunction:
     @property
     def all_results(self):
         return self._models_results
+    
+    @property
+    def best_trial(self):
+        results = self.results.copy()
+        target_metric_col = self.eval_metric
+
+        if self.other_eval_metric:
+            target_metric_col = 'weighted_metric'
+            results[target_metric_col] = (
+                results[self.eval_metric] * self.alpha + 
+                results[self.other_eval_metric] * (1-self.alpha))
+        
+        # NOTE: trial_idx != trial.id
+        best_trial_idx = np.argmax(results[target_metric_col])
+        return self.all_results[best_trial_idx]
 
     # NOTE: I don't love this constructor API, feels cluttered
     def __init__(
@@ -228,6 +242,8 @@ class ObjectiveFunction:
 
             sns.set()
             sns.scatterplot(self.results, x=x_axis, y=y_axis, **kwargs)
+
+            plt.title("Hyperparameter Search")
 
             if pyplot_show:
                 plt.show()

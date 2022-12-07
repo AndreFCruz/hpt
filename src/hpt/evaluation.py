@@ -124,23 +124,38 @@ def evaluate_fairness(
 
         unique_metrics = unique_metrics.union(curr_group_metrics.keys())
 
-    # Compute ratios
+    # Compute ratios and absolute diffs
     for metric_name in unique_metrics:
-        ratio_name = f"{metric_name}_ratio"
         curr_metric_results = [
             groupwise_metrics[group_metric_name(metric_name, group_name)]
             for group_name in unique_groups
         ]
 
+        # Metrics' ratio
+        ratio_name = f"{metric_name}_ratio"
+
+        # NOTE: should this ratio be computed w.r.t. global performance?
+        # - i.e., min(curr_metric_results) / global_curr_metric_result;
+        # - same question for the absolute diff calculations;
         results[ratio_name] = safe_division(
             min(curr_metric_results),
             max(curr_metric_results)
         )
+
+        # Metrics' absolute difference
+        diff_name = f"{metric_name}_diff"
+        results[diff_name] = max(curr_metric_results) - min(curr_metric_results)
+
     
     # Equal odds: maximum constraint violation for TPR and FPR equality
-    results["equal_odds"] = min(
+    results["equal_odds_ratio"] = min(
         results["tpr_ratio"],           # why not FNR ratio here?
         results["fpr_ratio"],           # why not TNR ratio here?
+    )
+
+    results["equal_odds_diff"] = min(
+        results["tpr_diff"],            # same as FNR diff
+        results["fpr_diff"],            # same as TNR diff
     )
 
     # Optionally, return group-wise metrics as well

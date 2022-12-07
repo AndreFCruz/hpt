@@ -136,6 +136,12 @@ def evaluate_fairness(
             min(curr_metric_results),
             max(curr_metric_results)
         )
+    
+    # Equal odds: maximum constraint violation for TPR and FPR equality
+    results["equal_odds"] = min(
+        results["tpr_ratio"],           # why not FNR ratio here?
+        results["fpr_ratio"],           # why not TNR ratio here?
+    )
 
     # Optionally, return group-wise metrics as well
     if return_groupwise_metrics:

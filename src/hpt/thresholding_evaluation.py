@@ -181,6 +181,6 @@ class ThresholdingEvaluation:
             plt.ylabel('TPR')
             plt.title('Group-wise ROC curves')
             
-            plt.show()
+            # plt.show()
 
         return max_accu_result

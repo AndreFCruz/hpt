@@ -108,7 +108,8 @@ class ThresholdingEvaluation:
             fpr, tpr, thresholds = roc_curve(group_y_true, group_y_scores)
             
             # Keep only n thresholds
-            keep_indices = [i * len(thresholds) // n_thresholds for i in range(n_thresholds)]
+            group_n_thresholds = min(n_thresholds, len(thresholds))
+            keep_indices = [i * len(thresholds) // group_n_thresholds for i in range(group_n_thresholds)]
             fpr, tpr, thresholds = fpr[keep_indices], tpr[keep_indices], thresholds[keep_indices]
 
             roc_curves[group_key(g)] = (fpr, tpr, thresholds)
@@ -173,7 +174,7 @@ class ThresholdingEvaluation:
                 sns.scatterplot(
                     x=[point[0]], y=[point[1]],
                     marker=marker, s=80,
-                    label=f"$t_{group_key(g)}={point[2]:.3}$",
+                    label=f"$t_{group_key(g)}={point[2]:0<5.3}$",
                 )
 
             plt.xlabel('FPR')

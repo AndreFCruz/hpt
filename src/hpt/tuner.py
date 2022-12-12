@@ -16,11 +16,7 @@ from optuna import samplers
 from optuna.trial import BaseTrial
 
 from .suggest import suggest_callable_hyperparams
-from .evaluation import (
-    evaluate_performance,
-    evaluate_fairness,
-    evaluate_predictions,
-)
+from .evaluation import evaluate_predictions
 
 from .utils.api import BaseLearner
 from .utils.load_yaml import load_hyperparameter_space

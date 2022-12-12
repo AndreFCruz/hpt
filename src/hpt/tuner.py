@@ -240,19 +240,26 @@ class ObjectiveFunction:
             import seaborn as sns
             from matplotlib import pyplot as plt
 
-            sns.set()
-            sns.scatterplot(self.results, x=x_axis, y=y_axis, **kwargs)
-
-            plt.title("Hyperparameter Search")
-
-            if pyplot_show:
-                plt.show()
-
         except ImportError as err:
             logging.error(
                 f"Necessary dependencies for plotting were not found: {err}."
                 f"You can install them with `pip install hpt[plotting]`."
             )
+
+        sns.set()
+        sns.scatterplot(self.results, x=x_axis, y=y_axis, **kwargs)
+
+        plt.title("Hyperparameter Search")
+
+        if pyplot_show:
+            plt.show()
+
+        # TODO: plot the best model with a star
+        # sns.scatterplot(
+        #     x=[results.loc[best_trial_id][PERFORMANCE_METRIC]], y=[results.loc[best_trial_id]['equal_odds_diff']],
+        #     color='red', marker='*', s=100,
+        #     label='best model',
+        # )
 
 
 class OptunaTuner:

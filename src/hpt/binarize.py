@@ -209,6 +209,7 @@ def compute_binary_predictions_posthoc_adjustment(
     y_pred_scores = (y_pred_scores * n_score_bins).astype(int) / n_score_bins
     # for now it makes things easier if we just use a fixed number of thresholds
     # (this, however, will create many ties...)
+    raise NotImplementedError()
     import ipdb; ipdb.set_trace()
 
     # Construct CDF and Performance arrays to compute fairness criteria

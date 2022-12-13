@@ -4,7 +4,6 @@ some fairness criteria (or even just to maximize global performance).
 
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 import numpy as np
 

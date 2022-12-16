@@ -32,11 +32,13 @@ class ObjectiveFunction:
         id: int
         hyperparameters: dict
         validation_results: dict
+        test_results: dict = None
         train_results: dict = None
         model: BaseLearner = None
         algorithm: str = None
 
         def __post_init__(self):
+            # Extract algorithm name from hyperparameters
             match = re.match(
                 r'^(?:.+[.])?(?P<algorithm>\w+)$',
                 self.hyperparameters['classpath'])
@@ -146,6 +148,9 @@ class ObjectiveFunction:
             eval_metric: str,
             s_train = None,
             s_val = None,
+            X_test = None,
+            y_test = None,
+            s_test = None,
             other_eval_metric: Optional[str] = None,
             alpha: Optional[float] = 0.50,
             eval_func: Optional[Callable[..., dict]] = None,
@@ -153,6 +158,7 @@ class ObjectiveFunction:
         ):
         self.X_train, self.y_train, self.s_train = (X_train, y_train, s_train)
         self.X_val, self.y_val, self.s_val = (X_val, y_val, s_val)
+        self.X_test, self.y_test, self.s_test = (X_test, y_test, s_test)
 
         self.hyperparameter_space = hyperparameter_space
         if isinstance(hyperparameter_space, (str, Path)):
@@ -204,7 +210,10 @@ class ObjectiveFunction:
         val_results = self.evaluate_model(
             model=model, X=self.X_val, y=self.y_val, s=self.s_val)
         
-        # TODO: optionally, evaluate on test data as well (just to save results)
+        # Optionally, evaluate on test data as well (just to save results)
+        if self.X_test is not None and self.y_test is not None:
+            test_results = self.evaluate_model(
+                model=model, X=self.X_test, y=self.y_test, s=self.s_test)
 
         # Store trial's results
         self._models_results.append(
@@ -212,7 +221,8 @@ class ObjectiveFunction:
                 id=trial.number,
                 hyperparameters=hyperparams,
                 validation_results=val_results,
-                model=model
+                test_results=test_results,
+                model=model,
             ))
 
         # Return scalarized evaluation metric

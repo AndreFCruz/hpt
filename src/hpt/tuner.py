@@ -300,8 +300,8 @@ class ObjectiveFunction:
             label='best model',
         )
 
-        plt.xlabel(f"{x_axis.title()})")
-        plt.ylabel(f"{y_axis.title()})")
+        plt.xlabel(f"{x_axis.title()}")
+        plt.ylabel(f"{y_axis.title()}")
 
         plt.title("Hyperparameter Search")
 

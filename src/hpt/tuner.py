@@ -110,14 +110,28 @@ class ObjectiveFunction:
     
     @property
     def results(self):
+        # By default, returns validation results
+        return self.get_results('validation')
+
+    def get_results(self, type_: str = 'validation'):
+        _get_results_helper: callable
+        if type_ in ('val', 'validation'):
+            _get_results_helper = lambda r: r.validation_results
+        elif type_ in ('test', 'testing'):
+            _get_results_helper = lambda r: r.test_results
+        elif type_ in ('train', 'training'):
+            _get_results_helper = lambda r: r.train_results
+        else:
+            raise ValueError(f"Value of type_='{type_}' is invalid.")
+
         return pd.DataFrame(
             data=[{
                 'algorithm': r.algorithm,
-                **r.validation_results,
+                **_get_results_helper(r),
             } for r in self._models_results],
             index=[r.id for r in self._models_results],
         )
-    
+
     @property
     def all_results(self):
         return self._models_results

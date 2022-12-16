@@ -167,6 +167,27 @@ class ObjectiveFunction:
 
         # Store all results in a list as models are trained
         self._models_results: List[ObjectiveFunction.TrialResults] = list()
+    
+    def evaluate_model(
+            self,
+            model: BaseLearner,
+            X: np.ndarray,
+            y: np.ndarray,
+            s: np.ndarray = None,
+        ) -> dict:
+
+        # Compute score predictions
+        y_pred_scores = model.predict_proba(X)
+        # TODO: computing predictions may require sensitive attribute access
+
+        # Use last column as scores for positive class
+        if len(y_pred_scores.shape) > 1:
+            y_pred_scores = y_pred_scores[:, -1]
+        
+        return self.eval_func(
+            y_true=y, y_pred_scores=y_pred_scores,
+            sensitive_attribute=s,
+        )
 
     def __call__(self, trial: BaseTrial) -> float:
 
@@ -179,18 +200,11 @@ class ObjectiveFunction:
         # Train model
         self.fit_model(model, self.X_train, self.y_train, self.s_train)
 
-        # Compute predictions on validation data
-        y_val_pred_scores = model.predict_proba(self.X_val)
-        # TODO: computing predictions may require sensitive attribute access
-
-        if len(y_val_pred_scores.shape) > 1:
-            y_val_pred_scores = y_val_pred_scores[:, -1]
-
-        # Evaluate validation predictions
-        val_results = self.eval_func(
-            self.y_val, y_val_pred_scores,
-            sensitive_attribute=self.s_val,
-        )
+        # Evaluate model on validation data
+        val_results = self.evaluate_model(
+            model=model, X=self.X_val, y=self.y_val, s=self.s_val)
+        
+        # TODO: optionally, evaluate on test data as well (just to save results)
 
         # Store trial's results
         self._models_results.append(
@@ -224,6 +238,18 @@ class ObjectiveFunction:
             pyplot_show: bool = True,
             **kwargs,
         ):
+
+        # Check if optional plotting requirements are installed
+        try:
+            import seaborn as sns
+            from matplotlib import pyplot as plt
+
+        except ImportError as err:
+            logging.error(
+                f"Necessary dependencies for plotting were not found: {err}."
+                f"You can install them with `pip install 'hyperparameter-tuning[plotting]'`."
+            )
+
         x_axis = x_axis or self.eval_metric
         y_axis = y_axis or self.other_eval_metric
         if y_axis is None:
@@ -232,30 +258,31 @@ class ObjectiveFunction:
                 "metric was used. Please provide kwarg `y_axis`."
             )
 
-        try:
-            import seaborn as sns
-            from matplotlib import pyplot as plt
-
-        except ImportError as err:
-            logging.error(
-                f"Necessary dependencies for plotting were not found: {err}."
-                f"You can install them with `pip install hpt[plotting]`."
-            )
-
         sns.set()
-        sns.scatterplot(self.results, x=x_axis, y=y_axis, **kwargs)
+
+        # Plot all points
+        sns.scatterplot(
+            data=self.results,
+            x=x_axis,
+            y=y_axis,
+            **kwargs,
+        )
+
+        # Plot best model with a red star
+        best_trial_results = self.best_trial.validation_results
+        sns.scatterplot(
+            x=[best_trial_results[x_axis]], y=[best_trial_results[y_axis]],
+            color='red', marker='*', s=100,
+            label='best model',
+        )
+
+        plt.xlabel(f"{x_axis.title()})")
+        plt.ylabel(f"{y_axis.title()})")
 
         plt.title("Hyperparameter Search")
 
         if pyplot_show:
             plt.show()
-
-        # TODO: plot the best model with a star
-        # sns.scatterplot(
-        #     x=[results.loc[best_trial_id][PERFORMANCE_METRIC]], y=[results.loc[best_trial_id]['equal_odds_diff']],
-        #     color='red', marker='*', s=100,
-        #     label='best model',
-        # )
 
 
 class OptunaTuner:

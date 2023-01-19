@@ -51,11 +51,16 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     # True Positive Rate (Recall)
     results["tpr"] = safe_division(tp, label_pos)
 
+    # False Negative Rate (1 - TPR)
+    results["fnr"] = safe_division(fn, label_pos)
+    assert results["tpr"] + results["fnr"] == 1
+
     # False Positive Rate
     results["fpr"] = safe_division(fp, label_neg)
 
     # True Negative Rate
-    # results["tnr"] = tn / label_neg
+    results["tnr"] = safe_division(tn, label_neg)
+    assert results["tnr"] + results["fpr"] == 1
 
     # Precision
     results["precision"] = safe_division(tp, pred_pos)
@@ -148,12 +153,14 @@ def evaluate_fairness(
 
     
     # Equal odds: maximum constraint violation for TPR and FPR equality
+    # i.e., the smallest ratio
     results["equal_odds_ratio"] = min(
         results["tpr_ratio"],           # why not FNR ratio here?
         results["fpr_ratio"],           # why not TNR ratio here?
     )
 
-    results["equal_odds_diff"] = min(
+    # or the largest absolute difference
+    results["equal_odds_diff"] = max(
         results["tpr_diff"],            # same as FNR diff
         results["fpr_diff"],            # same as TNR diff
     )

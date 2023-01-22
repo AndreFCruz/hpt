@@ -225,6 +225,7 @@ class ObjectiveFunction:
             model=model, X=self.X_val, y=self.y_val, s=self.s_val)
         
         # Optionally, evaluate on test data as well (just to save results)
+        test_results = None
         if self.X_test is not None and self.y_test is not None:
             test_results = self.evaluate_model(
                 model=model, X=self.X_test, y=self.y_test, s=self.s_test)

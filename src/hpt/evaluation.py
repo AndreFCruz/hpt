@@ -176,6 +176,7 @@ def evaluate_predictions(
         y_true: np.ndarray,
         y_pred_scores: np.ndarray,
         sensitive_attribute: Optional[np.ndarray] = None,
+        return_groupwise_metrics: bool = False,
         **threshold_target,
     ) -> dict:
     """Evaluates the given predictions on both performance and fairness
@@ -187,9 +188,12 @@ def evaluate_predictions(
         The true labels.
     y_pred_scores : np.ndarray
         The predicted scores.
-    sensitive_attribute : np.ndarray
-        The sensitive attribute - which protected group each sample belongs
-        to.
+    sensitive_attribute : np.ndarray, optional
+        The sensitive attribute - which protected group each sample belongs to.
+        If not provided, will not compute fairness metrics.
+    return_groupwise_metrics : bool
+        Whether to return groupwise performance metrics (requires providing
+        `sensitive_attribute`).
 
     Returns
     -------
@@ -209,7 +213,7 @@ def evaluate_predictions(
     if sensitive_attribute is not None:
         results.update(evaluate_fairness(
             y_true, y_pred_binary, sensitive_attribute,
-            return_groupwise_metrics=False,
+            return_groupwise_metrics=return_groupwise_metrics,
         ))
 
     return results

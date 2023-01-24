@@ -168,6 +168,7 @@ class ObjectiveFunction:
             other_eval_metric: Optional[str] = None,
             alpha: Optional[float] = 0.50,
             eval_func: Optional[Callable[..., dict]] = None,
+            return_groupwise_metrics: bool = False,
             **threshold_target,
         ):
         self.X_train, self.y_train, self.s_train = (X_train, y_train, s_train)
@@ -182,8 +183,17 @@ class ObjectiveFunction:
         self.other_eval_metric = other_eval_metric
         self.alpha = alpha
         assert alpha is None or (0 <= alpha <= 1)
-        self.eval_func = eval_func or evaluate_predictions
-        self.eval_func = partial(self.eval_func, **threshold_target)
+
+        # Running custom evaluation function
+        if eval_func is not None:
+            self.eval_func = eval_func
+
+        # Using the default evaluation function with the provided threshold target
+        else:
+            self.eval_func = partial(
+                evaluate_predictions,
+                return_groupwise_metrics=return_groupwise_metrics,
+                **threshold_target)
 
         # Store all results in a list as models are trained
         self._models_results: List[ObjectiveFunction.TrialResults] = list()

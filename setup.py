@@ -51,7 +51,7 @@ requirements_plotting = load_requirements(REQUIREMENTS_PLOTTING_PATH)
 #                                   Version                                    #
 # ---------------------------------------------------------------------------- #
 SRC_PATH = ROOT_PATH / 'src' / 'hpt'
-VERSION_PATH = SRC_PATH / 'version.py'
+VERSION_PATH = SRC_PATH / '_version.py'
 
 with VERSION_PATH.open('rb') as version_file:
     exec(version_file.read())

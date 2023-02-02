@@ -2,9 +2,11 @@
 
 Author: @sgpjesus
 """
+import logging
 from inspect import signature
 from numbers import Number
 from typing import Union
+from pathlib import Path
 
 import yaml
 from schema import And
@@ -130,7 +132,7 @@ HYPERPARAMETER_SPACE_SCHEMA = Schema(
 )
 
 
-def load_hyperparameter_space(path_or_dict: Union[str, dict]) -> dict:
+def load_hyperparameter_space(path_or_dict: Union[str, Path, dict]) -> dict:
     """Loads the hyperparameter space encoded as a YAML in the given path.
     If given a dict, space is already loaded and this function will return the
     same object.
@@ -146,20 +148,29 @@ def load_hyperparameter_space(path_or_dict: Union[str, dict]) -> dict:
     The loaded hyperparameter space.
     """
     # Read hyperparameter space from the YAML file (if given)
-    if isinstance(path_or_dict, str):
+    if isinstance(path_or_dict, (str, Path)):
+        path_obj = Path(path_or_dict).resolve()
+        logging.debug(
+            f"Loading hyperparameter space from the following YAML file: "
+            f"{path_obj}")
+
         try:
-            with open(path_or_dict, "r") as f_in:
+            with open(str(path_obj), "r") as f_in:
                 hyperparameter_space = yaml.safe_load(f_in)
+
         except yaml.YAMLError as err:
             raise ValueError(f"{err}. Did you pass a valid YAML file ?") from err
-    # Else, assume the given dictionary describes hyperparameter space
+
+    # Else, assume the given dictionary describes a hyperparameter space
     elif isinstance(path_or_dict, dict):
         hyperparameter_space = path_or_dict
+
     else:
         raise ValueError(
             "Invalid value for `learner_hyperparams`. "
             "Must be either a path to a YAML file or a dict following the same structure."
         )
+
     # validate the configuration file
     HYPERPARAMETER_SPACE_SCHEMA.validate(hyperparameter_space)
 

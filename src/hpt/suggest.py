@@ -26,7 +26,7 @@ def suggest_random_hyperparams(
     hyperparameter_space : Union[dict, str]
         A dict or a path to a YAML file representing a hyperparameter space.
         Please pre-load the YAML file and provide it as a dict here, as otherwise
-        this call will be unnecessarilly inefficient.
+        this call will be unnecessarily inefficient.
     seed : int
         The random seed used to generate the random set of hyperparameters.
         This function is a deterministic function of the seed provided.

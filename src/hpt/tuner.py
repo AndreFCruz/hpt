@@ -2,6 +2,7 @@
 """
 
 import re
+import time
 import logging
 import dataclasses
 from pathlib import Path
@@ -35,6 +36,7 @@ class ObjectiveFunction:
         test_results: dict = None
         train_results: dict = None
         model: BaseLearner = None
+        fit_time: float = None
         algorithm: str = None
 
         def __post_init__(self):
@@ -228,7 +230,10 @@ class ObjectiveFunction:
         model = self.instantiate_model(**hyperparams)
 
         # Train model
+        start_time = time.process_time()    # TODO: log wall-clock time as well
         self.fit_model(model, self.X_train, self.y_train, self.s_train)
+        elapsed_process_time = time.process_time() - start_time
+        logging.info(f"Trial {trial.number} took {elapsed_process_time}s to train.")
 
         # Evaluate model on validation data
         val_results = self.evaluate_model(
@@ -248,6 +253,7 @@ class ObjectiveFunction:
                 validation_results=val_results,
                 test_results=test_results,
                 model=model,
+                fit_time=elapsed_process_time,
             ))
 
         # Return scalarized evaluation metric

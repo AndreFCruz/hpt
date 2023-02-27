@@ -18,7 +18,7 @@ def compute_binary_predictions(
         fpr: Optional[float] = None,
         ppr: Optional[int] = None,
         random_seed: Optional[int] = 42,
-    ) -> np.ndarray:
+) -> np.ndarray:
     """Discretizes the given score predictions into binary labels,
     according to the provided target metric for thresholding.
 
@@ -52,7 +52,7 @@ def compute_binary_predictions(
     # If threshold provided, just binarize it, no untying necessary
     if threshold:
         return (y_pred_scores >= threshold).astype(int)
-    
+
     # Otherwise, we need to compute the allowed value for the numerator
     # and corresponding threshold (plus, may require random untying)
     label_pos = np.count_nonzero(y_true)
@@ -77,22 +77,24 @@ def compute_binary_predictions(
         # TPs budget to ensure >= the target TPR
         positive_preds_budget = math.ceil(tpr * label_pos)
         target_samples_mask = y_true_sorted == 1  # label positive samples
-    
+        non_target_samples_mask = y_true_sorted == 0  # label negative samples
+
     elif fpr:
         # FPs budget to ensure <= the target FPR
         positive_preds_budget = math.floor(fpr * label_neg)
         target_samples_mask = y_true_sorted == 0  # label negative samples
+        non_target_samples_mask = y_true_sorted == 1  # label positive samples
 
     elif ppr:
         # PPs budget to ensure <= the target PPR
         positive_preds_budget = math.floor(ppr * total)
-        target_samples_mask = np.ones_like(y_true_sorted).astype(bool) # all samples
+        target_samples_mask = np.ones_like(y_true_sorted).astype(bool)  # all samples
 
     # Indices of target samples (relevant for the target metric), ordered by descending score
     target_samples_indices = y_pred_sorted_indices[target_samples_mask]
 
     # Find the threshold at which the specified numerator_budget is met
-    threshold_idx = target_samples_indices[positive_preds_budget]
+    threshold_idx = target_samples_indices[(positive_preds_budget - 1)]
     threshold = y_pred_scores[threshold_idx]
 
     ####################################
@@ -123,14 +125,14 @@ def compute_binary_predictions(
         # samples (either TPs or FPs or PPs) with the same score
         rng = np.random.RandomState(random_seed)
 
-        samples_at_target_threshold_mask = (y_pred_scores[y_pred_sorted_indices] == threshold)
-
-        target_samples_at_target_threshold_indices = (
-            y_pred_sorted_indices[
-                samples_at_target_threshold_mask &      # Filter for samples at target threshold
-                target_samples_mask                     # Filter for relevant (target) samples
-            ]
+        samples_at_target_threshold_mask = (
+            y_pred_scores[y_pred_sorted_indices] == threshold
         )
+
+        target_samples_at_target_threshold_indices = y_pred_sorted_indices[
+            samples_at_target_threshold_mask
+            & target_samples_mask  # Filter for samples at target threshold  # Filter for relevant (target) samples
+        ]
 
         # # The extra number of positive predictions must be fully explained by this score tie
         # import ipdb; ipdb.set_trace()   # TODO: figure out why this assertion fails
@@ -139,11 +141,34 @@ def compute_binary_predictions(
         extra_pos_preds_indices = rng.choice(
             target_samples_at_target_threshold_indices,
             size=extra_pos_preds,
-            replace=False)
+            replace=False,
+        )
 
         # 2.3. give extra_pos_preds_indices a negative prediction
         y_pred_binary[extra_pos_preds_indices] = 0
 
+        # 2.4. Randomly sample the non-target labels at same rate
+        if tpr or fpr:
+            sampled_fraction = 1 - (positive_preds_budget / actual_pos_preds)
+
+            non_target_samples_at_target_threshold_indices = y_pred_sorted_indices[
+                samples_at_target_threshold_mask
+                & non_target_samples_mask  # Filter for samples at target threshold  # Filter for positive samples
+            ]
+            num_samples = (
+                non_target_samples_at_target_threshold_indices.shape[0]
+                * sampled_fraction
+            )
+
+            num_samples = int(round(num_samples, 0))
+
+            if num_samples:
+                extra_neg_preds_indices = rng.choice(
+                    non_target_samples_at_target_threshold_indices,
+                    size=num_samples,
+                    replace=False,
+                )
+                y_pred_binary[extra_neg_preds_indices] = 0
 
     # Sanity check: the number of positive_preds_budget should now be exactly fulfilled
     assert np.sum(y_pred_binary[target_samples_indices]) == positive_preds_budget
@@ -162,7 +187,7 @@ def compute_binary_predictions_posthoc_adjustment(
         # allowed_tpr_gap: Optional[float] = 0.0,
         # allowed_fpr_gap: Optional[float] = 0.0,
         random_seed: Optional[int] = 42,
-    ) -> np.ndarray:
+) -> np.ndarray:
     """Discretizes the given score predictions into binary labels, according
     to the provided fairness criteria - equalize TPR, FPR, or both.
 
@@ -195,9 +220,10 @@ def compute_binary_predictions_posthoc_adjustment(
     np.ndarray
         The binarized predictions.
     """
-    assert equalize_fpr or equalize_tpr, \
-        "Must target either equal FPR or equal TPR or both, got neither."
-    
+    assert (
+        equalize_fpr or equalize_tpr
+    ), "Must target either equal FPR or equal TPR or both, got neither."
+
     # The threshold is computed from the ratio of FPs and FNs,
     # and assumes the underlying classifier is approximately calibrated
     # i.e., a threshold of t=0.5 indicates equal likelihood of paying the FP
@@ -210,23 +236,26 @@ def compute_binary_predictions_posthoc_adjustment(
     # for now it makes things easier if we just use a fixed number of thresholds
     # (this, however, will create many ties...)
     raise NotImplementedError()
-    import ipdb; ipdb.set_trace()
+    import ipdb
+
+    ipdb.set_trace()
 
     # Construct CDF and Performance arrays to compute fairness criteria
     unique_groups = np.unique(sensitive_attribute)
 
-    data = pd.DataFrame({
-        'score': y_pred_scores,
-        'label': y_true,
-        **{
-            f'group={group}': (sensitive_attribute == group).astype(int)
-            for group in unique_groups
-        },
-    })
+    data = pd.DataFrame(
+        {
+            "score": y_pred_scores,
+            "label": y_true,
+            **{
+                f"group={group}": (sensitive_attribute == group).astype(int)
+                for group in unique_groups
+            },
+        }
+    )
 
-    cdfs = data.groupby(['score', 'label']).cumsum()
+    cdfs = data.groupby(["score", "label"]).cumsum()
     # TODO: construct CDF array and Performance array (perhaps separately, this is getting tricky...)
-
 
     # # Unique groups
     # unique_groups = np.unique(sensitive_attribute)
@@ -244,16 +273,13 @@ def compute_binary_predictions_posthoc_adjustment(
     #         ''
     #     }))
 
-
-
-
     # Generate DataFrames for CDF, Performance, and Total per group, where:
     # > cdf[group_][score_] = proportion of members of group_ with score below score_
     # TODO
     cdfs = ...
 
     # > perf[group_][score_] = proportion of members of that group_ and score_ that have a positive label
-    performance = ...   # TODO...
+    performance = ...  # TODO...
 
     # > totals[group_] = total number of group_ members
     totals = {}
@@ -264,8 +290,7 @@ def compute_binary_predictions_posthoc_adjustment(
     # > groupwise_thresholds[group_] = threshold used for group_
     # TODO: check if it is 1{f(X) >= threshold} or 1{f(X) > threshold}
     groupwise_thresholds: dict
-    if equalize_tpr and equalize_fpr:   # Equal odds
-
+    if equalize_tpr and equalize_fpr:  # Equal odds
         # TODO
         # - use data.two_sided_optimum to get optimal Equal Odds point (under all ROC curves)
         # - somehow binarize predictions such that this is met (with randomization for a portion of predictions)
@@ -273,15 +298,14 @@ def compute_binary_predictions_posthoc_adjustment(
         rng = np.random.RandomState(random_seed)
         pass
 
-    elif equalize_tpr:                  # Equal opportunity among Y=1
+    elif equalize_tpr:  # Equal opportunity among Y=1
         groupwise_thresholds = data.opportunity_cutoffs(target_rate=threshold)
-    
-    elif equalize_fpr:                  # Equal opportunity among Y=0
+
+    elif equalize_fpr:  # Equal opportunity among Y=0
         raise NotImplementedError(
-            "Equalizing TNR or FPR is not yet implemented as a fairness "
-            "criterion."
+            "Equalizing TNR or FPR is not yet implemented as a fairness " "criterion."
         )
-    
+
     # Binarize predictions with the given thresholds
     y_pred_binary = np.zeros_like(y_true)
 
@@ -290,5 +314,5 @@ def compute_binary_predictions_posthoc_adjustment(
         y_pred_binary[group_mask] = (
             y_pred_scores[group_mask] >= groupwise_thresholds[group_]
         ).astype(int)
-    
+
     return y_pred_binary

@@ -2,6 +2,7 @@
 a hyperparameter space.
 """
 import logging
+from pathlib import Path
 from copy import deepcopy
 from typing import Iterable, Union
 
@@ -12,7 +13,7 @@ from .utils.load_yaml import load_hyperparameter_space
 
 
 def suggest_random_hyperparams(
-        hyperparameter_space: Union[dict, str],
+        hyperparameter_space: Union[dict, str, Path],
         seed: int,
     ) -> dict:
     """Suggests a random set of hyperparameters from the given hyperparameter space.
@@ -23,10 +24,12 @@ def suggest_random_hyperparams(
 
     Parameters
     ----------
-    hyperparameter_space : Union[dict, str]
+    hyperparameter_space : Union[dict, str, Path]
         A dict or a path to a YAML file representing a hyperparameter space.
-        Please pre-load the YAML file and provide it as a dict here, as otherwise
-        this call will be unnecessarily inefficient.
+        If a path is provided, this function will load the hyperparameter space
+        from the given path. Else, if a dict is provided, it will assume the 
+        hyperparameter space has already been loaded (this prevents 
+        unnecessarily re-loading the same file multiple times from disk.)
     seed : int
         The random seed used to generate the random set of hyperparameters.
         This function is a deterministic function of the seed provided.
@@ -39,7 +42,7 @@ def suggest_random_hyperparams(
     """
 
     # If provided a path to a YAML file instead of a pre-loaded hyperparameter space
-    if isinstance(hyperparameter_space, str):
+    if isinstance(hyperparameter_space, (str, Path)):
         # Load (and validate) the given hyperparameter space
         # NOTE: you should really pre-load the YAML, doing it here will be inefficient
         hyperparameter_space = load_hyperparameter_space(hyperparameter_space)

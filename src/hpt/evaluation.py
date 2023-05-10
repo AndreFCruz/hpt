@@ -5,7 +5,7 @@ and fairness metrics, possibly at a specified FPR or FNR target.
 from typing import Optional
 
 import numpy as np
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, log_loss, mean_squared_error
 
 from .binarize import compute_binary_predictions
 
@@ -208,6 +208,12 @@ def evaluate_predictions(
 
     # Compute global performance metrics
     results = evaluate_performance(y_true, y_pred_binary)
+
+    # Compute loss metrics
+    results.update({
+        "squared_loss": mean_squared_error(y_true, y_pred_scores),
+        "log_loss": log_loss(y_true, y_pred_scores),
+    })
 
     # (Optionally) Compute fairness metrics
     if sensitive_attribute is not None:

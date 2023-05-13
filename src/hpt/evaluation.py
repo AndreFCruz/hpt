@@ -268,7 +268,7 @@ def evaluate_predictions_bootstrap(
 
         bt_mean[m] = statistics.mean(metric_values)
         bt_stdev[m] = statistics.stdev(metric_values)
-        bt_percentiles[m] = np.percentile(metric_values, confidence_percentiles)
+        bt_percentiles[m] = tuple(np.percentile(metric_values, confidence_percentiles))
 
     # Construct DF with results
 

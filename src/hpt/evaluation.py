@@ -3,7 +3,7 @@ and fairness metrics, possibly at a specified FPR or FNR target.
 
 """
 import statistics
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 from sklearn.metrics import confusion_matrix, log_loss, mean_squared_error
@@ -234,7 +234,7 @@ def evaluate_predictions_bootstrap(
         k: int = 200,
         confidence_pct: float = 95,
         seed: int = 42,
-    ) -> tuple[dict, dict]:
+    ) -> Tuple[dict, dict]:
     assert len(y_true) == len(y_pred_scores)
     rng = np.random.default_rng(seed=seed)
 

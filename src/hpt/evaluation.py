@@ -212,7 +212,7 @@ def evaluate_predictions(
     # Compute loss metrics
     results.update({
         "squared_loss": mean_squared_error(y_true, y_pred_scores),
-        "log_loss": log_loss(y_true, y_pred_scores),
+        "log_loss": log_loss(y_true, y_pred_scores, eps=np.finfo(y_pred_scores.dtype).eps),
     })
 
     # (Optionally) Compute fairness metrics

@@ -1,13 +1,15 @@
 """A set of functions to evaluate predictions on common performance
 and fairness metrics, possibly at a specified FPR or FNR target.
-"""
 
+"""
+import statistics
 from typing import Optional
 
 import numpy as np
 from sklearn.metrics import confusion_matrix, log_loss, mean_squared_error
 
 from .binarize import compute_binary_predictions
+from .utils.dict import join_dictionaries
 
 
 def safe_division(a: float, b: float):
@@ -223,3 +225,59 @@ def evaluate_predictions(
         ))
 
     return results
+
+
+def evaluate_predictions_bootstrap(
+        y_true: np.ndarray,
+        y_pred_scores: np.ndarray,
+        sensitive_attribute: np.ndarray,
+        k: int = 200,
+        confidence_pct: float = 95,
+        seed: int = 42,
+    ) -> tuple[dict, dict]:
+    assert len(y_true) == len(y_pred_scores)
+    rng = np.random.default_rng(seed=seed)
+
+    # Draw k bootstrap samples with replacement
+    results = []
+    for _ in range(k):
+
+        # Indices of current bootstrap sample
+        indices = rng.choice(len(y_true), replace=True, size=len(y_true))
+
+        # Evaluate predictions on this bootstrap sample
+        results.append(evaluate_predictions(
+            y_true=y_true[indices],
+            y_pred_scores=y_pred_scores[indices],
+            sensitive_attribute=sensitive_attribute[indices],
+            threshold=0.50,
+        ))
+
+    # Compute statistics from bootstrapped results
+    all_metrics = set(results[0].keys())
+
+    bt_mean = {}
+    bt_stdev = {}
+    bt_percentiles = {}
+
+    low_percentile = (100 - confidence_pct) / 2
+    confidence_percentiles = [low_percentile, 100 - low_percentile]
+
+    for m in all_metrics:
+        metric_values = [r[m] for r in results]
+
+        bt_mean[m] = statistics.mean(metric_values)
+        bt_stdev[m] = statistics.stdev(metric_values)
+        bt_percentiles[m] = np.percentile(metric_values, confidence_percentiles)
+
+    # Construct DF with results
+
+    return join_dictionaries(*(
+        {
+            f"{metric}_bootstrap": bt_mean[metric],
+            f"{metric}_stdev_bootstrap": bt_stdev[metric],
+            f"{metric}_low-percentile_bootstrap": bt_percentiles[metric][0],
+            f"{metric}_high-percentile_bootstrap": bt_percentiles[metric][1],
+        }
+        for metric in sorted(bt_mean.keys())
+    ))

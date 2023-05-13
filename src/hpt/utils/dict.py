@@ -1,7 +1,15 @@
 """Utils for handling dictionaries.
 """
 import inspect
+import operator
+from functools import reduce
 from typing import Mapping, Callable
+
+
+def join_dictionaries(*dicts) -> dict:
+    """Join multiple dictionaries into one.
+    """
+    return reduce(operator.or_, dicts)
 
 
 def fit_dict(dct: dict, func: Callable, accept_kwargs: bool = True) -> dict:

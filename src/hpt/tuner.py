@@ -335,6 +335,7 @@ class OptunaTuner:
             objective_function: Callable[[BaseTrial], float],
             sampler: Optional[samplers.BaseSampler] = None,
             seed: int = 42,
+            direction: str = "maximize",
             **study_kwargs,
         ):
 
@@ -342,6 +343,7 @@ class OptunaTuner:
         self.seed = seed
         self.study = optuna.create_study(
             sampler=(sampler or samplers.RandomSampler(self.seed)),
+            direction=direction,
             **study_kwargs,
         )
 

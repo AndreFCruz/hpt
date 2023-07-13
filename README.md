@@ -26,8 +26,9 @@ from hpt.tuner import ObjectiveFunction, OptunaTuner
 
 obj_func = ObjectiveFunction(
     X_train, y_train, X_test, y_test,
-    hyperparameter_space=HYPERPARAM_SPACE_PATH,
-    eval_metric='accuracy',
+    hyperparameter_space=HYPERPARAM_SPACE_PATH,    # path to YAML file
+    eval_metric="accuracy",
+    direction="maximize",
     s_train=s_train,
     s_val=s_test,
     threshold=0.50,

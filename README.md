@@ -28,13 +28,15 @@ obj_func = ObjectiveFunction(
     X_train, y_train, X_test, y_test,
     hyperparameter_space=HYPERPARAM_SPACE_PATH,    # path to YAML file
     eval_metric="accuracy",
-    direction="maximize",
     s_train=s_train,
     s_val=s_test,
     threshold=0.50,
 )
 
-tuner = OptunaTuner(obj_func) # NOTE: can pass other useful study kwargs here (e.g. storage)
+tuner = OptunaTuner(
+    objective_function=obj_func,
+    direction="maximize",    # NOTE: can pass other useful study kwargs here (e.g. storage)
+)
 
 # Then just run optimize as you would for an optuna.Study object
 tuner.optimize(n_trials=20, n_jobs=4)

@@ -160,6 +160,7 @@ class ObjectiveFunction:
             y_train,
             X_val,
             y_val,
+            *,
             hyperparameter_space: Union[str, dict],
             eval_metric: str,
             s_train = None,
@@ -184,6 +185,12 @@ class ObjectiveFunction:
         self.eval_metric = eval_metric
         self.other_eval_metric = other_eval_metric
         self.alpha = alpha
+        if self.other_eval_metric is None:
+            self.alpha = 1.0
+            logging.warning(
+                f"Setting `alpha={self.alpha}` as no secondary evaluation "
+                f"metric was provided (`other_eval_metric={self.other_eval_metric}`)."
+            )
         assert alpha is None or (0 <= alpha <= 1)
 
         # Running custom evaluation function

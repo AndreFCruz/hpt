@@ -21,18 +21,18 @@ def threshold_target_metric_value(request) -> float:
 
 
 def test_scores_binarization(
-        y_true: np.ndarray,
-        y_pred_scores: np.ndarray,
-        threshold_target_metric: str,
-        threshold_target_metric_value: float,
-        random_seed: int,
-    ):
-    """Tests hpt package score binarization (without score ties).
-    """
+    y_true: np.ndarray,
+    y_pred_scores: np.ndarray,
+    threshold_target_metric: str,
+    threshold_target_metric_value: float,
+    random_seed: int,
+):
+    """Tests hpt package score binarization (without score ties)."""
 
     # Binarize predictions
     y_pred_binary = compute_binary_predictions(
-        y_true, y_pred_scores,
+        y_true,
+        y_pred_scores,
         random_seed=random_seed,
         **{threshold_target_metric: threshold_target_metric_value},
     )
@@ -54,17 +54,17 @@ def test_scores_binarization(
 
 
 def test_scores_binarization_with_ties(
-        y_true: np.ndarray,
-        y_pred_scores_with_ties: np.ndarray,
-        threshold_target_metric: str,
-        threshold_target_metric_value: float,
-        random_seed: int,
-    ):
-    """Tests hpt package score binarization **with** score ties!
-    """
+    y_true: np.ndarray,
+    y_pred_scores_with_ties: np.ndarray,
+    threshold_target_metric: str,
+    threshold_target_metric_value: float,
+    random_seed: int,
+):
+    """Tests hpt package score binarization **with** score ties!"""
     # Binarize predictions
     y_pred_binary = compute_binary_predictions(
-        y_true, y_pred_scores_with_ties,
+        y_true,
+        y_pred_scores_with_ties,
         random_seed=random_seed,
         **{threshold_target_metric: threshold_target_metric_value},
     )

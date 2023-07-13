@@ -19,19 +19,19 @@ from hpt.binarize import compute_binary_predictions_posthoc_adjustment
 def sensitive_prevalence(request) -> Tuple[float]:
     prev = request.param
     if isinstance(prev, float):
-        return (prev, 1-prev)
+        return (prev, 1 - prev)
     else:
         assert isinstance(prev, Iterable)
-        assert sum(prev) == 1   # sanity check
+        assert sum(prev) == 1  # sanity check
         return prev
 
 
 @pytest.fixture
 def sensitive_attribute(
-        sensitive_prevalence: Tuple[float],
-        y_true: np.ndarray,
-        rng: np.random.Generator,
-    ) -> np.ndarray:
+    sensitive_prevalence: Tuple[float],
+    y_true: np.ndarray,
+    rng: np.random.Generator,
+) -> np.ndarray:
     """Randomly generates sensitive attribute following a provided distribution.
 
     Parameters
@@ -72,4 +72,3 @@ def sensitive_attribute(
 #     y_pred_binary = compute_binary_predictions_posthoc_adjustment(
 #         y_true, y_pred_scores, sensitive_attribute, equalize_tpr=True,
 #     )
-

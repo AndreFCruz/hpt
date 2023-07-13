@@ -7,8 +7,7 @@ from typing import Mapping, Callable
 
 
 def join_dictionaries(*dicts) -> dict:
-    """Join multiple dictionaries into one.
-    """
+    """Join multiple dictionaries into one."""
     return reduce(operator.or_, dicts)
 
 
@@ -24,16 +23,14 @@ def fit_dict(dct: dict, func: Callable, accept_kwargs: bool = True) -> dict:
     if func_spec.varkw and accept_kwargs:
         return dct
 
-    return {
-        k: v for k, v in dct.items() if k in func_args
-    }
+    return {k: v for k, v in dct.items() if k in func_args}
 
 
 def apply_recursively(
-        dct: dict,
-        apply: Callable[[object], object],
-        pred: Callable[[object], bool] = (lambda _k: True)
-    ) -> dict:
+    dct: dict,
+    apply: Callable[[object], object],
+    pred: Callable[[object], bool] = (lambda _k: True),
+) -> dict:
     """Applies a function recursively to the provided dictionary, possibly
     filtering the fields to which it is applied.
 

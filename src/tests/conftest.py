@@ -48,13 +48,15 @@ def num_score_bins(request) -> int:
 
 
 @pytest.fixture
-def y_pred_scores_with_ties(num_score_bins: int, rng: np.random.Generator) -> np.ndarray:
+def y_pred_scores_with_ties(
+    num_score_bins: int, rng: np.random.Generator
+) -> np.ndarray:
     """Randomly generates score predictions with ties.
 
     NOTE
     - I know there's a bit of confusion with the num_score_bins because to
     get scores evenly spaced by 0.1 we need 11 buckets not 10;
-    - This works just fine as each bin gets all scores within range 
+    - This works just fine as each bin gets all scores within range
     (bin_score - 1/num_score_bins/2, bin_score + 1/num_score_bins/2);
     - For bins 0.0 and 1.0 this range is halved as there are no negative scores
     or scores above 1.0;

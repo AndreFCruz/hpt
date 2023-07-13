@@ -11,13 +11,13 @@ from .utils.fairness_criteria import CriteriaData
 
 
 def compute_binary_predictions(
-        y_true: np.ndarray,
-        y_pred_scores: np.ndarray,
-        threshold: Optional[float] = None,
-        tpr: Optional[float] = None,
-        fpr: Optional[float] = None,
-        ppr: Optional[int] = None,
-        random_seed: Optional[int] = 42,
+    y_true: np.ndarray,
+    y_pred_scores: np.ndarray,
+    threshold: Optional[float] = None,
+    tpr: Optional[float] = None,
+    fpr: Optional[float] = None,
+    ppr: Optional[int] = None,
+    random_seed: Optional[int] = 42,
 ) -> np.ndarray:
     """Discretizes the given score predictions into binary labels,
     according to the provided target metric for thresholding.
@@ -177,16 +177,16 @@ def compute_binary_predictions(
 
 
 def compute_binary_predictions_posthoc_adjustment(
-        y_true: np.ndarray,
-        y_pred_scores: np.ndarray,
-        sensitive_attribute: np.ndarray,
-        equalize_tpr: Optional[bool] = False,
-        equalize_fpr: Optional[bool] = False,
-        false_negative_cost: Optional[float] = 1,
-        false_positive_cost: Optional[float] = 1,
-        # allowed_tpr_gap: Optional[float] = 0.0,
-        # allowed_fpr_gap: Optional[float] = 0.0,
-        random_seed: Optional[int] = 42,
+    y_true: np.ndarray,
+    y_pred_scores: np.ndarray,
+    sensitive_attribute: np.ndarray,
+    equalize_tpr: Optional[bool] = False,
+    equalize_fpr: Optional[bool] = False,
+    false_negative_cost: Optional[float] = 1,
+    false_positive_cost: Optional[float] = 1,
+    # allowed_tpr_gap: Optional[float] = 0.0,
+    # allowed_fpr_gap: Optional[float] = 0.0,
+    random_seed: Optional[int] = 42,
 ) -> np.ndarray:
     """Discretizes the given score predictions into binary labels, according
     to the provided fairness criteria - equalize TPR, FPR, or both.

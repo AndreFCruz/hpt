@@ -43,6 +43,9 @@ tuner.optimize(n_trials=20, n_jobs=4)
 
 # Results are stored in tuner.results
 tuner.results
+
+# You can reconstruct the best predictor with:
+clf = obj_func.reconstruct_model(obj_func.best_trial)
 ```
 
 ## Defining a hyperparameter space

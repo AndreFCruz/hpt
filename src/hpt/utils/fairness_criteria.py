@@ -25,13 +25,13 @@ def trisearch_int(f, lo, hi, tol=1):
     Works assuming f is quasiconvex.
     """
     while hi - lo > tol:
-        m1 = (2*lo + hi)//3
-        m2 = (lo + 2*hi)//3
+        m1 = (2 * lo + hi) // 3
+        m2 = (lo + 2 * hi) // 3
         if f(m1) < f(m2):
-            hi = m2-1
+            hi = m2 - 1
         else:
-            lo = m1+1
-    return (hi + lo)//2
+            lo = m1 + 1
+    return (hi + lo) // 2
 
 
 def trisearch(f, lo, hi, tol):
@@ -40,13 +40,13 @@ def trisearch(f, lo, hi, tol):
     Works assuming f is quasiconvex.
     """
     while hi - lo > tol:
-        m1 = (2.*lo + hi)/3
-        m2 = (lo + 2.*hi)/3
+        m1 = (2.0 * lo + hi) / 3
+        m2 = (lo + 2.0 * hi) / 3
         if f(m1) < f(m2):
             hi = m2
         else:
             lo = m1
-    return (hi + lo)/2
+    return (hi + lo) / 2
 
 
 class CriteriaData(object):
@@ -73,20 +73,22 @@ class CriteriaData(object):
         self.pdfs = self.get_pdfs()
 
     def get_pdfs(self):
-        cdf_vs = np.concatenate([[np.zeros_like(self.cdfs.values[0])],self.cdfs.values])
-        pdf_vs = (cdf_vs[1:]-cdf_vs[:-1])
+        cdf_vs = np.concatenate(
+            [[np.zeros_like(self.cdfs.values[0])], self.cdfs.values]
+        )
+        pdf_vs = cdf_vs[1:] - cdf_vs[:-1]
         pdf = pd.DataFrame(pdf_vs, columns=self.columns, index=self.cdfs.index)
         return pdf
 
     @property
     def trisearch(self):
-        if self.cdfs.index.dtype == 'int64':
+        if self.cdfs.index.dtype == "int64":
             return trisearch_int
         else:
             return trisearch
 
     @classmethod
-    def from_individuals(self, data, groups = None, binsize=0.025):
+    def from_individuals(self, data, groups=None, binsize=0.025):
         """Recover CriteriaData instance from individual performances.
 
         data should be a dataframe with three columns: the group key, the
@@ -104,26 +106,26 @@ class CriteriaData(object):
         data = data.sort(score)
         data[score] = (data[score] / binsize).astype(int)
         datasets = {}
-        cdfs = pd.DataFrame(index=np.arange(min(data[score]), max(data[score])+1),
-                            columns=groups)
+        cdfs = pd.DataFrame(
+            index=np.arange(min(data[score]), max(data[score]) + 1), columns=groups
+        )
         performance = cdfs.copy()
-        cdfs = cdfs.notnull()*0
+        cdfs = cdfs.notnull() * 0
         totals = []
         for group in groups:
             grouped = data[data[groupkey] == group].groupby(score)
             num_per_score = grouped.count()[result]
             totals.append(num_per_score.sum())
             cdfs[group][num_per_score.index] = num_per_score.values
-            cdfs[group] = cdfs[group].cumsum() * 1. / cdfs[group].sum()
+            cdfs[group] = cdfs[group].cumsum() * 1.0 / cdfs[group].sum()
             performance[group] = grouped.mean()
         cdfs.index = cdfs.index * binsize
         performance.index = performance.index * binsize
-        performance = performance.interpolate().fillna(0)  #Remove nans
+        performance = performance.interpolate().fillna(0)  # Remove nans
         return self(cdfs, performance, np.array(totals))
 
-
     def profit_cutoffs(self, target_rate, _=None):
-        losses = np.cumsum(self.compute_area_slices(self.performance-target_rate))
+        losses = np.cumsum(self.compute_area_slices(self.performance - target_rate))
         ans = {}
         for group in self.columns:
             last_bad_row = np.argmin(losses[group].values)
@@ -140,9 +142,9 @@ class CriteriaData(object):
         if pdfs is None:
             pdfs = self.pdfs
         perf = performance.values
-        return  pdfs * perf
+        return pdfs * perf
 
-    def compute_area(self, cutoffs = None, performance=None):
+    def compute_area(self, cutoffs=None, performance=None):
         if performance is None:
             performance = self.performance
         if cutoffs is None:
@@ -150,19 +152,25 @@ class CriteriaData(object):
         else:
             ans = []
             for group in self.columns:
-                area = self.compute_area_slices(self.pdfs[group].loc[cutoffs[group]:],
-                                                performance[group].loc[cutoffs[group]:]).sum(axis=0)
+                area = self.compute_area_slices(
+                    self.pdfs[group].loc[cutoffs[group] :],
+                    performance[group].loc[cutoffs[group] :],
+                ).sum(axis=0)
                 ans.append(area)
             return np.array(ans)
 
     def compute_curves(self):
         dfs = []
-        for value in [self.performance, 1-self.performance]:
+        for value in [self.performance, 1 - self.performance]:
             area_slices = self.compute_area_slices(performance=value).values
-            #area_slices = np.vstack([np.zeros_like(area_slices[0]), area_slices])
+            # area_slices = np.vstack([np.zeros_like(area_slices[0]), area_slices])
             under_curve = area_slices.sum(axis=0)
             fraction_excluded = area_slices.cumsum(axis=0) / under_curve
-            dfs.append(pd.DataFrame(1-fraction_excluded, index=self.cdfs.index, columns=self.columns))
+            dfs.append(
+                pd.DataFrame(
+                    1 - fraction_excluded, index=self.cdfs.index, columns=self.columns
+                )
+            )
         return dfs
 
     def score_two_sided_profit(self, point, target_rate):
@@ -175,7 +183,10 @@ class CriteriaData(object):
 
     def two_sided_optimum(self, target_rate):
         good_frac, bad_frac = self.compute_curves()
-        polygons = [Delaunay(list(zip(good_frac[group], bad_frac[group]))) for group in self.columns]
+        polygons = [
+            Delaunay(list(zip(good_frac[group], bad_frac[group])))
+            for group in self.columns
+        ]
         valid_points = []
         for poly in polygons:
             for p in poly.points:
@@ -200,9 +211,9 @@ class CriteriaData(object):
 
         me = (curvex[i], curvey[i])
         if p[0] < me[0]:
-            lst = range(i-1, -1, -1)
+            lst = range(i - 1, -1, -1)
         else:
-            lst = range(i+1, len(curvex), 1)
+            lst = range(i + 1, len(curvex), 1)
         for j in lst:
             they = (curvex[j], curvey[j])
             ratio = (p[0] - me[0]) / (they[0] - me[0])
@@ -219,7 +230,10 @@ class CriteriaData(object):
         for group in self.columns:
             polygon = Delaunay(list(zip(good_frac[group], bad_frac[group])))
             vertices = polygon.simplices[polygon.find_simplex(p)]
-            vert_to_pair = lambda v: (good_frac[group].index[v], bad_frac[group].values[v])
+            vert_to_pair = lambda v: (
+                good_frac[group].index[v],
+                bad_frac[group].values[v],
+            )
             vals = list(map(vert_to_pair, vertices))
             answer = (min(vals), max(vals))
             for v in vertices:
@@ -227,13 +241,17 @@ class CriteriaData(object):
                     val = vert_to_pair(v)
                     answer = (val, val)
                     break
-                j = self._find_other_endpoint(good_frac[group].values, bad_frac[group].values, v, p)
+                j = self._find_other_endpoint(
+                    good_frac[group].values, bad_frac[group].values, v, p
+                )
                 if j is None:
                     continue
 
                 vals = list(map(vert_to_pair, [v, j]))
                 answer2 = (min(vals), max(vals))
-                if abs(answer2[1][1] - answer2[0][1]) < abs(answer[1][1] - answer[0][1]):
+                if abs(answer2[1][1] - answer2[0][1]) < abs(
+                    answer[1][1] - answer[0][1]
+                ):
                     answer = answer2
             ans[group] = (answer[0][0], answer[1][0])
         return ans
@@ -248,7 +266,7 @@ class CriteriaData(object):
             target_rate = self.get_best_opportunity(target_rate)
         ans = {}
         cumulative = np.cumsum(self.compute_area_slices(), axis=0).values
-        goal_area = cumulative[-1] * (1-target_rate)
+        goal_area = cumulative[-1] * (1 - target_rate)
         indices = first_index_above(cumulative, goal_area)
         cutoffs = self.cdfs.index[indices]
         return dict(zip(self.columns, cutoffs))
@@ -258,7 +276,7 @@ class CriteriaData(object):
             target_rate = self.get_best_demographic(target_rate)
         ans = {}
         for group in self.columns:
-            index = first_index_above(self.cdfs[group].values, (1-target_rate))-1
+            index = first_index_above(self.cdfs[group].values, (1 - target_rate)) - 1
             cutoff = self.cdfs.index[max(index, 0)]
             ans[group] = cutoff
         return ans
@@ -266,7 +284,7 @@ class CriteriaData(object):
     def fixed_cutoffs(self, target_rate, target_is_profit=False):
         if target_is_profit:
             target_rate = self.get_best_fixed(target_rate)
-        return {r:target_rate for r in self.columns}
+        return {r: target_rate for r in self.columns}
 
     def compute_profit(self, cutoffs, target_rate):
         if isinstance(cutoffs, np.ndarray):
@@ -276,16 +294,33 @@ class CriteriaData(object):
         return (profits * self.totals).sum()
 
     def efficiency(self, cutoffs, target_rate):
-        return self.compute_profit(cutoffs, target_rate) / self.compute_profit(self.profit_cutoffs(target_rate), target_rate)
+        return self.compute_profit(cutoffs, target_rate) / self.compute_profit(
+            self.profit_cutoffs(target_rate), target_rate
+        )
 
     def get_best_opportunity(self, target_rate):
-        return trisearch(lambda t: -self.compute_profit(self.opportunity_cutoffs(t), target_rate), 0, 1, 1e-3)
+        return trisearch(
+            lambda t: -self.compute_profit(self.opportunity_cutoffs(t), target_rate),
+            0,
+            1,
+            1e-3,
+        )
 
     def get_best_fixed(self, target_rate):
-        return self.trisearch(lambda t: -self.compute_profit({r:t for r in self.columns}, target_rate), self.cdfs.index.min(), self.cdfs.index.max(), 1e-3)
+        return self.trisearch(
+            lambda t: -self.compute_profit({r: t for r in self.columns}, target_rate),
+            self.cdfs.index.min(),
+            self.cdfs.index.max(),
+            1e-3,
+        )
 
     def get_best_demographic(self, target_rate):
-        return trisearch(lambda t: -self.compute_profit(self.demographic_cutoffs(t), target_rate), 0, 1, 1e-3)
+        return trisearch(
+            lambda t: -self.compute_profit(self.demographic_cutoffs(t), target_rate),
+            0,
+            1,
+            1e-3,
+        )
 
     def coverage(self, cutoffs):
         total = 0

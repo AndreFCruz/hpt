@@ -16,9 +16,9 @@ def import_object(import_path: str) -> Union[object, Callable]:
     -------
     The imported object (this can be a class, a callable, a variable).
     """
-    separator_idx = import_path.rindex('.')
-    module_path = import_path[: separator_idx]
-    obj_name = import_path[separator_idx + 1:]
+    separator_idx = import_path.rindex(".")
+    module_path = import_path[:separator_idx]
+    obj_name = import_path[separator_idx + 1 :]
 
     module = importlib.import_module(module_path)
     return getattr(module, obj_name)
@@ -40,6 +40,6 @@ def get_full_name(obj: Any) -> str:
     The object's classpath.
     """
     if callable(obj):
-        return obj.__module__ + '.' + obj.__qualname__
+        return obj.__module__ + "." + obj.__qualname__
     else:
-        return obj.__class__.__module__ + '.' + obj.__class__.__qualname__
+        return obj.__class__.__module__ + "." + obj.__class__.__qualname__

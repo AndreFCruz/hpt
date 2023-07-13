@@ -15,15 +15,16 @@ class RandomValueTrial(FixedTrial):
     """
 
     def __init__(
-            self,
-            number: int = 0,
-            seed: Optional[int] = None,
-            sampler: Optional[RandomSampler] = None
-        ):
-        assert not (seed and sampler), \
-            f"Must provide at most one of (seed={seed}, sampler={sampler})"
+        self,
+        number: int = 0,
+        seed: Optional[int] = None,
+        sampler: Optional[RandomSampler] = None,
+    ):
+        assert not (
+            seed and sampler
+        ), f"Must provide at most one of (seed={seed}, sampler={sampler})"
         super().__init__(
-            params=None,    # type: ignore
+            params=None,  # type: ignore
             number=number,
         )
         self.seed = seed
@@ -50,7 +51,8 @@ class RandomValueTrial(FixedTrial):
         if name in self._distributions:
             # No need to sample if already suggested.
             distributions.check_distribution_compatibility(
-                self._distributions[name], distribution,
+                self._distributions[name],
+                distribution,
             )
             param_value = self._suggested_params[name]
 
@@ -61,8 +63,10 @@ class RandomValueTrial(FixedTrial):
                 param_value = distributions._get_single_value(distribution)
             else:
                 param_value = self.sampler.sample_independent(
-                    study=None, trial=self,     # type: ignore
-                    param_name=name, param_distribution=distribution,
+                    study=None,
+                    trial=self,  # type: ignore
+                    param_name=name,
+                    param_distribution=distribution,
                 )
 
         self._suggested_params[name] = param_value

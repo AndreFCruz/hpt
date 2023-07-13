@@ -57,7 +57,7 @@ class YamlValidator:
             ) from e
 
         except AttributeError as e:
-            class_name = path[path.rindex(".") + 1:]
+            class_name = path[path.rindex(".") + 1 :]
             raise AttributeError(
                 f"Provided class for model in YAML file is not contained in "
                 f"module. Check for errors in '{class_name}'."
@@ -120,7 +120,9 @@ HYPERPARAMETER_SPACE_SCHEMA = Schema(
                             "range": And(
                                 list,
                                 lambda values: len(values) == 2,
-                                lambda values: all(isinstance(x, Number) for x in values),
+                                lambda values: all(
+                                    isinstance(x, Number) for x in values
+                                ),
                             ),
                             Optional_("log", default=False): Or(True, False),
                         }
@@ -151,8 +153,8 @@ def load_hyperparameter_space(path_or_dict: Union[str, Path, dict]) -> dict:
     if isinstance(path_or_dict, (str, Path)):
         path_obj = Path(path_or_dict).resolve()
         logging.debug(
-            f"Loading hyperparameter space from the following YAML file: "
-            f"{path_obj}")
+            f"Loading hyperparameter space from the following YAML file: " f"{path_obj}"
+        )
 
         try:
             with open(str(path_obj), "r") as f_in:

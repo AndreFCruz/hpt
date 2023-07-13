@@ -46,7 +46,7 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     assert label_pos + label_neg == total
 
     results = {}
-    
+
     # Accuracy
     results["accuracy"] = (tp + tn) / total
 
@@ -74,11 +74,11 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
 
 def evaluate_fairness(
-        y_true: np.ndarray,
-        y_pred: np.ndarray,
-        sensitive_attribute: np.ndarray,
-        return_groupwise_metrics: Optional[bool] = False,
-    ) -> dict:
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    sensitive_attribute: np.ndarray,
+    return_groupwise_metrics: Optional[bool] = False,
+) -> dict:
     """Evaluates fairness as the ratios between group-wise performance metrics.
 
     Parameters
@@ -109,8 +109,9 @@ def evaluate_fairness(
     def group_metric_name(metric_name, group_name):
         return f"{metric_name}_group={group_name}"
 
-    assert len(unique_groups) > 1, (
-        f"Found a single unique sensitive attribute: {unique_groups}")
+    assert (
+        len(unique_groups) > 1
+    ), f"Found a single unique sensitive attribute: {unique_groups}"
 
     for s_value in unique_groups:
         # Indices of samples that belong to the current group
@@ -124,10 +125,12 @@ def evaluate_fairness(
         curr_group_metrics = evaluate_performance(group_labels, group_preds)
 
         # Add group-wise metrics to the dictionary
-        groupwise_metrics.update({
-            group_metric_name(metric_name, s_value): metric_value
-            for metric_name, metric_value in curr_group_metrics.items()
-        })
+        groupwise_metrics.update(
+            {
+                group_metric_name(metric_name, s_value): metric_value
+                for metric_name, metric_value in curr_group_metrics.items()
+            }
+        )
 
         unique_metrics = unique_metrics.union(curr_group_metrics.keys())
 
@@ -145,26 +148,24 @@ def evaluate_fairness(
         # - i.e., min(curr_metric_results) / global_curr_metric_result;
         # - same question for the absolute diff calculations;
         results[ratio_name] = safe_division(
-            min(curr_metric_results),
-            max(curr_metric_results)
+            min(curr_metric_results), max(curr_metric_results)
         )
 
         # Metrics' absolute difference
         diff_name = f"{metric_name}_diff"
         results[diff_name] = max(curr_metric_results) - min(curr_metric_results)
 
-    
     # Equal odds: maximum constraint violation for TPR and FPR equality
     # i.e., the smallest ratio
     results["equal_odds_ratio"] = min(
-        results["tpr_ratio"],           # why not FNR ratio here?
-        results["fpr_ratio"],           # why not TNR ratio here?
+        results["tpr_ratio"],  # why not FNR ratio here?
+        results["fpr_ratio"],  # why not TNR ratio here?
     )
 
     # or the largest absolute difference
     results["equal_odds_diff"] = max(
-        results["tpr_diff"],            # same as FNR diff
-        results["fpr_diff"],            # same as TNR diff
+        results["tpr_diff"],  # same as FNR diff
+        results["fpr_diff"],  # same as TNR diff
     )
 
     # Optionally, return group-wise metrics as well
@@ -175,12 +176,12 @@ def evaluate_fairness(
 
 
 def evaluate_predictions(
-        y_true: np.ndarray,
-        y_pred_scores: np.ndarray,
-        sensitive_attribute: Optional[np.ndarray] = None,
-        return_groupwise_metrics: bool = False,
-        **threshold_target,
-    ) -> dict:
+    y_true: np.ndarray,
+    y_pred_scores: np.ndarray,
+    sensitive_attribute: Optional[np.ndarray] = None,
+    return_groupwise_metrics: bool = False,
+    **threshold_target,
+) -> dict:
     """Evaluates the given predictions on both performance and fairness
     metrics (if `sensitive_attribute` is provided).
 
@@ -205,53 +206,64 @@ def evaluate_predictions(
 
     # Binarize predictions according to the given threshold target
     y_pred_binary = compute_binary_predictions(
-        y_true, y_pred_scores, **threshold_target,
+        y_true,
+        y_pred_scores,
+        **threshold_target,
     )
 
     # Compute global performance metrics
     results = evaluate_performance(y_true, y_pred_binary)
 
     # Compute loss metrics
-    results.update({
-        "squared_loss": mean_squared_error(y_true, y_pred_scores),
-        "log_loss": log_loss(y_true, y_pred_scores, eps=np.finfo(y_pred_scores.dtype).eps),
-    })
+    results.update(
+        {
+            "squared_loss": mean_squared_error(y_true, y_pred_scores),
+            "log_loss": log_loss(
+                y_true, y_pred_scores, eps=np.finfo(y_pred_scores.dtype).eps
+            ),
+        }
+    )
 
     # (Optionally) Compute fairness metrics
     if sensitive_attribute is not None:
-        results.update(evaluate_fairness(
-            y_true, y_pred_binary, sensitive_attribute,
-            return_groupwise_metrics=return_groupwise_metrics,
-        ))
+        results.update(
+            evaluate_fairness(
+                y_true,
+                y_pred_binary,
+                sensitive_attribute,
+                return_groupwise_metrics=return_groupwise_metrics,
+            )
+        )
 
     return results
 
 
 def evaluate_predictions_bootstrap(
-        y_true: np.ndarray,
-        y_pred_scores: np.ndarray,
-        sensitive_attribute: np.ndarray,
-        k: int = 200,
-        confidence_pct: float = 95,
-        seed: int = 42,
-    ) -> Tuple[dict, dict]:
+    y_true: np.ndarray,
+    y_pred_scores: np.ndarray,
+    sensitive_attribute: np.ndarray,
+    k: int = 200,
+    confidence_pct: float = 95,
+    seed: int = 42,
+) -> Tuple[dict, dict]:
     assert len(y_true) == len(y_pred_scores)
     rng = np.random.default_rng(seed=seed)
 
     # Draw k bootstrap samples with replacement
     results = []
     for _ in range(k):
-
         # Indices of current bootstrap sample
         indices = rng.choice(len(y_true), replace=True, size=len(y_true))
 
         # Evaluate predictions on this bootstrap sample
-        results.append(evaluate_predictions(
-            y_true=y_true[indices],
-            y_pred_scores=y_pred_scores[indices],
-            sensitive_attribute=sensitive_attribute[indices],
-            threshold=0.50,
-        ))
+        results.append(
+            evaluate_predictions(
+                y_true=y_true[indices],
+                y_pred_scores=y_pred_scores[indices],
+                sensitive_attribute=sensitive_attribute[indices],
+                threshold=0.50,
+            )
+        )
 
     # Compute statistics from bootstrapped results
     all_metrics = set(results[0].keys())
@@ -272,12 +284,14 @@ def evaluate_predictions_bootstrap(
 
     # Construct DF with results
 
-    return join_dictionaries(*(
-        {
-            f"{metric}_bootstrap": bt_mean[metric],
-            f"{metric}_stdev_bootstrap": bt_stdev[metric],
-            f"{metric}_low-percentile_bootstrap": bt_percentiles[metric][0],
-            f"{metric}_high-percentile_bootstrap": bt_percentiles[metric][1],
-        }
-        for metric in sorted(bt_mean.keys())
-    ))
+    return join_dictionaries(
+        *(
+            {
+                f"{metric}_bootstrap": bt_mean[metric],
+                f"{metric}_stdev_bootstrap": bt_stdev[metric],
+                f"{metric}_low-percentile_bootstrap": bt_percentiles[metric][0],
+                f"{metric}_high-percentile_bootstrap": bt_percentiles[metric][1],
+            }
+            for metric in sorted(bt_mean.keys())
+        )
+    )

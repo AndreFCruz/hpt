@@ -157,13 +157,13 @@ def evaluate_fairness(
 
     # Equal odds: maximum constraint violation for TPR and FPR equality
     # i.e., the smallest ratio
-    results["equal_odds_ratio"] = min(
+    results["equalized_odds_ratio"] = min(
         results["tpr_ratio"],  # why not FNR ratio here?
         results["fpr_ratio"],  # why not TNR ratio here?
     )
 
     # or the largest absolute difference
-    results["equal_odds_diff"] = max(
+    results["equalized_odds_diff"] = max(
         results["tpr_diff"],  # same as FNR diff
         results["fpr_diff"],  # same as TNR diff
     )

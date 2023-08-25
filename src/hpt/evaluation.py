@@ -219,7 +219,8 @@ def evaluate_predictions(
         {
             "squared_loss": mean_squared_error(y_true, y_pred_scores),
             "log_loss": log_loss(
-                y_true, y_pred_scores, eps=np.finfo(y_pred_scores.dtype).eps
+                y_true, y_pred_scores,
+                eps=np.finfo(y_pred_scores.dtype).eps,  # NOTE: `eps` parameter will be removed in sklearn 1.5
             ),
         }
     )
@@ -287,10 +288,10 @@ def evaluate_predictions_bootstrap(
     return join_dictionaries(
         *(
             {
-                f"{metric}_bootstrap": bt_mean[metric],
-                f"{metric}_stdev_bootstrap": bt_stdev[metric],
-                f"{metric}_low-percentile_bootstrap": bt_percentiles[metric][0],
-                f"{metric}_high-percentile_bootstrap": bt_percentiles[metric][1],
+                f"{metric}_mean": bt_mean[metric],
+                f"{metric}_stdev": bt_stdev[metric],
+                f"{metric}_low-percentile": bt_percentiles[metric][0],
+                f"{metric}_high-percentile": bt_percentiles[metric][1],
             }
             for metric in sorted(bt_mean.keys())
         )

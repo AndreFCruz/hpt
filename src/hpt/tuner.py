@@ -291,6 +291,7 @@ class ObjectiveFunction:
         x_axis: str = None,
         y_axis: str = None,
         pyplot_show: bool = True,
+        data_type: str = "validation",
         **kwargs,
     ):
         # Check if optional plotting requirements are installed
@@ -313,15 +314,17 @@ class ObjectiveFunction:
             )
 
         # Plot all points
+        results_df = self.get_results(data_type)
+        best_trial_results = results_df.loc[self.best_trial.id]
+
         sns.scatterplot(
-            data=self.results,
+            data=results_df.drop(index=self.best_trial.id),
             x=x_axis,
             y=y_axis,
             **kwargs,
         )
 
         # Plot best model with a red star
-        best_trial_results = self.best_trial.validation_results
         sns.scatterplot(
             x=[best_trial_results[x_axis]],
             y=[best_trial_results[y_axis]],
@@ -334,7 +337,7 @@ class ObjectiveFunction:
         plt.xlabel(f"{x_axis.title()}")
         plt.ylabel(f"{y_axis.title()}")
 
-        plt.title("Hyperparameter Search")
+        plt.title(f"Hyperparameter Search ({data_type})")
 
         if pyplot_show:
             plt.show()

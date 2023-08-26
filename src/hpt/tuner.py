@@ -312,8 +312,6 @@ class ObjectiveFunction:
                 "metric was used. Please provide kwarg `y_axis`."
             )
 
-        sns.set()
-
         # Plot all points
         sns.scatterplot(
             data=self.results,

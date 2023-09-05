@@ -8,12 +8,6 @@ from typing import Tuple
 import pytest
 import numpy as np
 
-from hpt.evaluation import (
-    evaluate_performance,
-    evaluate_fairness,
-)
-from hpt.binarize import compute_binary_predictions_posthoc_adjustment
-
 
 @pytest.fixture(params=[0.05, 0.10, 0.2, 0.5, (0.3, 0.3, 0.4), (0.1, 0.2, 0.7)])
 def sensitive_prevalence(request) -> Tuple[float]:
@@ -58,17 +52,3 @@ def sensitive_attribute(
         size=num_samples,
         p=sensitive_prevalence,
     )
-
-
-# TODO!
-# def test_scores_binarization_equal_tpr(
-#         y_true: np.ndarray,
-#         y_pred_scores: np.ndarray,
-#         sensitive_attribute: np.ndarray,
-#         random_seed: int,
-#     ):
-
-#     import ipdb; ipdb.set_trace()
-#     y_pred_binary = compute_binary_predictions_posthoc_adjustment(
-#         y_true, y_pred_scores, sensitive_attribute, equalize_tpr=True,
-#     )

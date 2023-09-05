@@ -81,7 +81,7 @@ class ObjectiveFunction:
         return constructor(**hyperparams_fitted)
 
     @staticmethod
-    def fit_model(model, X_train, y_train, s_train=None):
+    def fit_model(model, X_train, y_train, s_train=None, verbose=True):
         sig = signature(model.fit)
 
         # compatibility with fairgbm
@@ -96,7 +96,7 @@ class ObjectiveFunction:
 
         # else, train without sensitive attribute data
         else:
-            if s_train is not None:
+            if s_train is not None and verbose:
                 logging.warning(
                     f"Can't figure out how to use sensitive_attribute data for "
                     f"training with object of type '{type(model)}'."
@@ -239,7 +239,7 @@ class ObjectiveFunction:
 
         # Train model
         start_time = time.process_time()  # TODO: log wall-clock time as well
-        self.fit_model(model, self.X_train, self.y_train, self.s_train)
+        self.fit_model(model, self.X_train, self.y_train, self.s_train, verbose=(trial.number == 0))
         elapsed_process_time = time.process_time() - start_time
         logging.info(f"Trial {trial.number} took {elapsed_process_time}s to train.")
 

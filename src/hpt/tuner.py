@@ -152,7 +152,6 @@ class ObjectiveFunction:
         best_trial_idx = np.argmax(results[target_metric_col])
         return self.all_results[best_trial_idx]
 
-    # NOTE: I don't love this constructor API, feels cluttered
     def __init__(
         self,
         X_train,

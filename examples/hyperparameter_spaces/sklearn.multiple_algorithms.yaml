@@ -56,11 +56,11 @@ DT:
 RF:
     classpath: sklearn.ensemble.RandomForestClassifier
     kwargs:
-        n_jobs: -3
+        n_jobs: 1
 
         n_estimators:
             type: int
-            range: [ 5, 20000 ]
+            range: [ 10, 5000 ]
             log: True
 
         max_depth:

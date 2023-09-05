@@ -94,10 +94,6 @@ class ObjectiveFunction:
 
         # TODO: add adhoc compatibility with other libraries here
 
-        # else, attempt to use s_train as a third positional argument
-        elif s_train is not None and len(sig.parameters) > 2:
-            model.fit(X_train, y_train, s_train)
-
         # else, train without sensitive attribute data
         else:
             if s_train is not None:

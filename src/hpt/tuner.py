@@ -97,7 +97,7 @@ class ObjectiveFunction:
         # else, train without sensitive attribute data
         else:
             if s_train is not None:
-                logging.error(
+                logging.warning(
                     f"Can't figure out how to use sensitive_attribute data for "
                     f"training with object of type '{type(model)}'."
                 )

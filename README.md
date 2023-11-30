@@ -54,8 +54,7 @@ clf = obj_func.reconstruct_model(obj_func.best_trial)
 
 The hyperparameter space is provided either path to a YAML file, or as a `dict` 
 with the same structure.
-Example hyperparameter spaces [here](examples/hyperparameter_spaces/sklearn.multiple_algorithms.yaml) and 
-[here](examples/hyperparameter_spaces/lightgbm.yaml).
+Example hyperparameter spaces [here](examples/hyperparameter_spaces/).
 
 The YAML file must follow this structure:
 ```yaml

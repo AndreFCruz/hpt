@@ -39,7 +39,7 @@ extensions = [
     'myst_parser',          # for rendering MD files
     'sphinx.ext.viewcode',
     'nbsphinx',             # for rendering jupyter notebooks
-    # 'myst_nb',
+    'IPython.sphinxext.ipython_console_highlighting',
 ]
 
 templates_path = ['_templates']

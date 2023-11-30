@@ -7,4 +7,5 @@ readthedocs-sphinx-search
 nbsphinx
 numpydoc
 sphinx-autodoc-typehints
-ipython
+IPython
+ipykernel

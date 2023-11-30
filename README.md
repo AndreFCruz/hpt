@@ -11,6 +11,8 @@ A minimal hyperparameter tuning framework to help you train hundreds of models.
 
 It's essentially a set of helpful wrappers over optuna.
 
+Consult the package documentation [here](https://andrefcruz.github.io/hpt/)!
+
 
 ## Install
 

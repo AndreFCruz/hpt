@@ -27,6 +27,10 @@ jobs:
           pip install ".[all]"
           pip install -r requirements/docs.txt
 
+      - name: Install pandoc (external dependency)
+        run: |
+          apt update && apt install pandoc -y
+  
       - name: Build Documentation
         run: |
           sphinx-build docs _build

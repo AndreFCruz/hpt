@@ -24,7 +24,7 @@ jobs:
 
       - name: Install Sphinx and dependencies
         run: |
-          pip install .
+          pip install ".[all]"
           pip install -r requirements/docs.txt
 
       - name: Build Documentation

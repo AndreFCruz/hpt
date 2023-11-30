@@ -64,9 +64,9 @@ class ThresholdingEvaluation:
         Parameters
         ----------
         groupwise_fpr : dict
-            A dictionary in which groupwise_fpr[group_] = FPR of group group_.
+            A dictionary that maps a group to its FPR value.
         groupwise_tpr : dict
-            A dictionary in which groupwise_tpr[group_] = TPR of group group_.
+            A dictionary that maps a group to its TPR value.
 
         Returns
         -------

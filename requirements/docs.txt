@@ -1,0 +1,11 @@
+sphinx
+sphinx_rtd_theme
+sphinx-autopackagesummary
+myst-parser
+sphinx-copybutton
+readthedocs-sphinx-search
+nbsphinx
+numpydoc
+sphinx-autodoc-typehints
+IPython
+ipykernel

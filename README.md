@@ -1,9 +1,11 @@
 # hpt
 
-> This repository is under construction :construction:
-
-![badge for tests status](https://github.com/AndreFCruz/hpt/actions/workflows/python-package.yml/badge.svg)
-![badge for PyPI publishing status](https://github.com/AndreFCruz/hpt/actions/workflows/python-publish.yml/badge.svg)
+![Tests status](https://github.com/AndreFCruz/hpt/actions/workflows/python-package.yml/badge.svg)
+![PyPI status](https://github.com/AndreFCruz/hpt/actions/workflows/python-publish.yml/badge.svg)
+![Documentation status](https://github.com/AndreFCruz/hpt/actions/workflows/python-docs.yml/badge.svg)
+![PyPI version](https://badgen.net/pypi/v/hyperparameter-tuning)
+![OSI license](https://badgen.net/pypi/license/hyperparameter-tuning)
+![Python compatibility](https://badgen.net/pypi/python/hyperparameter-tuning)
 
 A minimal hyperparameter tuning framework to help you train hundreds of models.
 
@@ -52,8 +54,8 @@ clf = obj_func.reconstruct_model(obj_func.best_trial)
 
 The hyperparameter space is provided either path to a YAML file, or as a `dict` 
 with the same structure.
-Example hyperparameter spaces [here](examples/sklearn.small_hyperparam_space.yaml) and 
-[here](examples/sklearn.large_hyperparam_space.yaml).
+Example hyperparameter spaces [here](examples/hyperparameter_spaces/sklearn.multiple_algorithms.yaml) and 
+[here](examples/hyperparameter_spaces/lightgbm.yaml).
 
 The YAML file must follow this structure:
 ```yaml

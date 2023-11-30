@@ -1,0 +1,41 @@
+LGBM:
+    classpath: lightgbm.LGBMClassifier
+    kwargs:
+        n_jobs: -3
+
+        boosting_type:
+            - goss
+            - gbdt
+            - dart  # Takes ~6 times longer than goss and gbdt
+
+        enable_bundle:
+            - False
+
+        # Number of base estimators
+        n_estimators:
+            type: int
+            range: [ 20, 10000 ]
+            log: True
+
+        # Max tree leaves for base learners
+        num_leaves:
+            type: int
+            range: [ 10, 1000 ]
+            log: True
+
+        # min_data_in_leaf
+        min_child_samples:
+            type: int
+            range: [ 5, 300 ]
+            log: True
+
+        # Max depth for base learners
+        max_depth:
+            type: int
+            range: [ 2, 20 ]
+            log: True
+
+        learning_rate:
+            type: float
+            range: [ 0.02, 0.5 ]
+            log: True

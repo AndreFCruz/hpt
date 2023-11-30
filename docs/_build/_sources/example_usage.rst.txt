@@ -2,6 +2,6 @@ Example Jupyter Notebook
 ========================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
    examples/example-usage.ipynb

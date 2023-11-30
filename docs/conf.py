@@ -20,7 +20,7 @@ version = __version__
 
 # Copy examples folder to the documentation folder
 import shutil
-shutil.copytree(src="../examples", dst="_static/examples", dirs_exist_ok=True)
+shutil.copytree(src="../examples", dst="examples", dirs_exist_ok=True)
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

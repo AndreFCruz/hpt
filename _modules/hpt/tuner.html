@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hpt.tuner &mdash; hyperparameter-tuning 0.3.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=4621528c"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+        <script src="../../_static/copybutton.js?v=f281be69"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script src="../../_static/custom.js?v=882eb7ae"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            hyperparameter-tuning
+          </a>
+              <div class="version">
+                0.3.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example-usage.html">Example usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../readme.html">Readme file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_ref/modules.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">hyperparameter-tuning</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">hpt.tuner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for hpt.tuner</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;A simple wrapper for optuna hyperparameter tuners.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">dataclasses</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">signature</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">optuna</span>
+<span class="kn">from</span> <span class="nn">optuna</span> <span class="kn">import</span> <span class="n">samplers</span>
+<span class="kn">from</span> <span class="nn">optuna.trial</span> <span class="kn">import</span> <span class="n">BaseTrial</span>
+
+<span class="kn">from</span> <span class="nn">.suggest</span> <span class="kn">import</span> <span class="n">suggest_callable_hyperparams</span>
+<span class="kn">from</span> <span class="nn">.evaluation</span> <span class="kn">import</span> <span class="n">evaluate_predictions</span>
+
+<span class="kn">from</span> <span class="nn">.utils.api</span> <span class="kn">import</span> <span class="n">BaseLearner</span>
+<span class="kn">from</span> <span class="nn">.utils.load_yaml</span> <span class="kn">import</span> <span class="n">load_hyperparameter_space</span>
+<span class="kn">from</span> <span class="nn">.utils.classpath</span> <span class="kn">import</span> <span class="n">import_object</span>
+
+
+<div class="viewcode-block" id="ObjectiveFunction">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction">[docs]</a>
+<span class="k">class</span> <span class="nc">ObjectiveFunction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Callable objective function to be used with optuna.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ObjectiveFunction.TrialResults">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction.TrialResults">[docs]</a>
+    <span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span>
+    <span class="k">class</span> <span class="nc">TrialResults</span><span class="p">:</span>
+        <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+        <span class="n">hyperparameters</span><span class="p">:</span> <span class="nb">dict</span>
+        <span class="n">validation_results</span><span class="p">:</span> <span class="nb">dict</span>
+        <span class="n">test_results</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">train_results</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">BaseLearner</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">fit_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="c1"># Extract algorithm name from hyperparameters</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span>
+                <span class="sa">r</span><span class="s2">&quot;^(?:.+[.])?(?P&lt;algorithm&gt;\w+)$&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s2">&quot;classpath&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;algorithm&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="ObjectiveFunction.instantiate_model">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction.instantiate_model">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">instantiate_model</span><span class="p">(</span><span class="n">classpath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">hyperparams</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseLearner</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Instantiates a model using the provided class path and provided</span>
+<span class="sd">        hyperparameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        classpath : str</span>
+<span class="sd">            The classpath for importing the model&#39;s constructor/class.</span>
+<span class="sd">        hyperparams : dict</span>
+<span class="sd">            A dictionary of hyperparameter values to use as key-word arguments.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        object</span>
+<span class="sd">            The model object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">constructor</span> <span class="o">=</span> <span class="n">import_object</span><span class="p">(</span><span class="n">classpath</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">callable</span><span class="p">(</span><span class="n">constructor</span><span class="p">)</span>
+
+        <span class="c1"># Use only arguments that are accepted by the model constructor</span>
+        <span class="c1"># TODO: fix this, currently it&#39;s throwing away useful kwargs...</span>
+        <span class="c1"># hyperparams_fitted = fit_dict(hyperparams, constructor)</span>
+
+        <span class="n">hyperparams_fitted</span> <span class="o">=</span> <span class="n">hyperparams</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># temporary placeholder</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hyperparams</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">hyperparams_fitted</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Ignoring following kwargs for model constructor: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">set</span><span class="p">(</span><span class="n">hyperparams</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nb">set</span><span class="p">(</span><span class="n">hyperparams_fitted</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">constructor</span><span class="p">(</span><span class="o">**</span><span class="n">hyperparams_fitted</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ObjectiveFunction.fit_model">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction.fit_model">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">fit_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">s_train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">signature</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">)</span>
+
+        <span class="c1"># compatibility with fairgbm</span>
+        <span class="k">if</span> <span class="s2">&quot;constraint_group&quot;</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">constraint_group</span><span class="o">=</span><span class="n">s_train</span><span class="p">)</span>
+
+        <span class="c1"># compatibility with fairlearn</span>
+        <span class="k">elif</span> <span class="s2">&quot;sensitive_features&quot;</span> <span class="ow">in</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">sensitive_features</span><span class="o">=</span><span class="n">s_train</span><span class="p">)</span>
+
+        <span class="c1"># TODO: add adhoc compatibility with other libraries here</span>
+
+        <span class="c1"># else, train without sensitive attribute data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">s_train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Can&#39;t figure out how to use sensitive_attribute data for &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;training with object of type &#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+                <span class="p">)</span>
+
+            <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">model</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># By default, returns validation results</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span><span class="s2">&quot;validation&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ObjectiveFunction.get_results">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction.get_results">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;validation&quot;</span><span class="p">):</span>
+        <span class="n">_get_results_helper</span><span class="p">:</span> <span class="nb">callable</span>
+        <span class="k">if</span> <span class="n">type_</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;val&quot;</span><span class="p">,</span> <span class="s2">&quot;validation&quot;</span><span class="p">):</span>
+            <span class="n">_get_results_helper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">validation_results</span>
+        <span class="k">elif</span> <span class="n">type_</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="s2">&quot;testing&quot;</span><span class="p">):</span>
+            <span class="n">_get_results_helper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">test_results</span>
+        <span class="k">elif</span> <span class="n">type_</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;training&quot;</span><span class="p">):</span>
+            <span class="n">_get_results_helper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">train_results</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Value of type_=&#39;</span><span class="si">{</span><span class="n">type_</span><span class="si">}</span><span class="s2">&#39; is invalid.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">algorithm</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">_get_results_helper</span><span class="p">(</span><span class="n">r</span><span class="p">),</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_results</span>
+            <span class="p">],</span>
+            <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_results</span><span class="p">],</span>
+        <span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">all_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models_results</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">best_trial</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">target_metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_metric</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span><span class="p">:</span>
+            <span class="n">target_metric_col</span> <span class="o">=</span> <span class="s2">&quot;weighted_metric&quot;</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">target_metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">eval_metric</span>
+            <span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">+</span> <span class="n">results</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+
+        <span class="c1"># NOTE: trial_idx != trial.id</span>
+        <span class="n">best_trial_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="n">target_metric_col</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_results</span><span class="p">[</span><span class="n">best_trial_idx</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">X_train</span><span class="p">,</span>
+        <span class="n">y_train</span><span class="p">,</span>
+        <span class="n">X_val</span><span class="p">,</span>
+        <span class="n">y_val</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">hyperparameter_space</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">],</span>
+        <span class="n">eval_metric</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">s_train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">s_val</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">X_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">y_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">s_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">other_eval_metric</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.50</span><span class="p">,</span>
+        <span class="n">eval_func</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">return_groupwise_metrics</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">threshold_target</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_train</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">s_train</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_val</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_val</span><span class="p">,</span> <span class="n">y_val</span><span class="p">,</span> <span class="n">s_val</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X_test</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_test</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_test</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">s_test</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_space</span> <span class="o">=</span> <span class="n">hyperparameter_space</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hyperparameter_space</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_space</span> <span class="o">=</span> <span class="n">load_hyperparameter_space</span><span class="p">(</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">hyperparameter_space</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval_metric</span> <span class="o">=</span> <span class="n">eval_metric</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span> <span class="o">=</span> <span class="n">other_eval_metric</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Setting `alpha=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="si">}</span><span class="s2">` as no secondary evaluation &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;metric was provided (`other_eval_metric=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span><span class="si">}</span><span class="s2">`).&quot;</span>
+            <span class="p">)</span>
+        <span class="k">assert</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">alpha</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Running custom evaluation function</span>
+        <span class="k">if</span> <span class="n">eval_func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eval_func</span> <span class="o">=</span> <span class="n">eval_func</span>
+
+        <span class="c1"># Using the default evaluation function with the provided threshold target</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eval_func</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span>
+                <span class="n">evaluate_predictions</span><span class="p">,</span>
+                <span class="n">return_groupwise_metrics</span><span class="o">=</span><span class="n">return_groupwise_metrics</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">threshold_target</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Store all results in a list as models are trained</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models_results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">TrialResults</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ObjectiveFunction.evaluate_model">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction.evaluate_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">evaluate_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">BaseLearner</span><span class="p">,</span>
+        <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">s</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="c1"># Compute score predictions</span>
+        <span class="n">y_pred_scores</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="c1"># TODO: computing predictions may require sensitive attribute access</span>
+
+        <span class="c1"># Use last column as scores for positive class</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_pred_scores</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">y_pred_scores</span> <span class="o">=</span> <span class="n">y_pred_scores</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_func</span><span class="p">(</span>
+            <span class="n">y_true</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+            <span class="n">y_pred_scores</span><span class="o">=</span><span class="n">y_pred_scores</span><span class="p">,</span>
+            <span class="n">sensitive_attribute</span><span class="o">=</span><span class="n">s</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">BaseTrial</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="c1"># Sample hyperparameters</span>
+        <span class="n">hyperparams</span> <span class="o">=</span> <span class="n">suggest_callable_hyperparams</span><span class="p">(</span><span class="n">trial</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_space</span><span class="p">)</span>
+
+        <span class="c1"># Construct model</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">instantiate_model</span><span class="p">(</span><span class="o">**</span><span class="n">hyperparams</span><span class="p">)</span>
+
+        <span class="c1"># Train model</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">process_time</span><span class="p">()</span>  <span class="c1"># TODO: log wall-clock time as well</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_train</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="p">(</span><span class="n">trial</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">elapsed_process_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">process_time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trial </span><span class="si">{</span><span class="n">trial</span><span class="o">.</span><span class="n">number</span><span class="si">}</span><span class="s2"> took </span><span class="si">{</span><span class="n">elapsed_process_time</span><span class="si">}</span><span class="s2">s to train.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Evaluate model on validation data</span>
+        <span class="n">val_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_model</span><span class="p">(</span>
+            <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">X_val</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y_val</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s_val</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Optionally, evaluate on test data as well (just to save results)</span>
+        <span class="n">test_results</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">test_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_model</span><span class="p">(</span>
+                <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y_test</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s_test</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Store trial&#39;s results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">TrialResults</span><span class="p">(</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">number</span><span class="p">,</span>
+                <span class="n">hyperparameters</span><span class="o">=</span><span class="n">hyperparams</span><span class="p">,</span>
+                <span class="n">validation_results</span><span class="o">=</span><span class="n">val_results</span><span class="p">,</span>
+                <span class="n">test_results</span><span class="o">=</span><span class="n">test_results</span><span class="p">,</span>
+                <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+                <span class="n">fit_time</span><span class="o">=</span><span class="n">elapsed_process_time</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Return scalarized evaluation metric</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="n">val_results</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_metric</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">+</span> <span class="n">val_results</span><span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span>
+            <span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+
+        <span class="c1"># Or simply a single evaluation metric value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">val_results</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_metric</span><span class="p">]</span>
+
+<div class="viewcode-block" id="ObjectiveFunction.reconstruct_model">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction.reconstruct_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial_results</span><span class="p">:</span> <span class="n">TrialResults</span><span class="p">):</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">instantiate_model</span><span class="p">(</span><span class="o">**</span><span class="n">trial_results</span><span class="o">.</span><span class="n">hyperparameters</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_train</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ObjectiveFunction.plot">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.ObjectiveFunction.plot">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">y_axis</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pyplot_show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">data_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;validation&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="c1"># Check if optional plotting requirements are installed</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+            <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Necessary dependencies for plotting were not found: </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;You can install them with `pip install &#39;hyperparameter-tuning[plotting]&#39;`.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">x_axis</span> <span class="o">=</span> <span class="n">x_axis</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">eval_metric</span>
+        <span class="n">y_axis</span> <span class="o">=</span> <span class="n">y_axis</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_eval_metric</span>
+        <span class="k">if</span> <span class="n">y_axis</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;No y_axis metric could be inferred as only one optimization &quot;</span>
+                <span class="s2">&quot;metric was used. Please provide kwarg `y_axis`.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Plot all points</span>
+        <span class="n">results_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
+        <span class="n">best_trial_results</span> <span class="o">=</span> <span class="n">results_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">best_trial</span><span class="o">.</span><span class="n">id</span><span class="p">]</span>
+
+        <span class="n">sns</span><span class="o">.</span><span class="n">scatterplot</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">results_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">best_trial</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x_axis</span><span class="p">,</span>
+            <span class="n">y</span><span class="o">=</span><span class="n">y_axis</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Plot best model with a red star</span>
+        <span class="n">sns</span><span class="o">.</span><span class="n">scatterplot</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="p">[</span><span class="n">best_trial_results</span><span class="p">[</span><span class="n">x_axis</span><span class="p">]],</span>
+            <span class="n">y</span><span class="o">=</span><span class="p">[</span><span class="n">best_trial_results</span><span class="p">[</span><span class="n">y_axis</span><span class="p">]],</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span>
+            <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;*&quot;</span><span class="p">,</span>
+            <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;best model&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">x_axis</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">y_axis</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hyperparameter Search (</span><span class="si">{</span><span class="n">data_type</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pyplot_show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="OptunaTuner">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.OptunaTuner">[docs]</a>
+<span class="k">class</span> <span class="nc">OptunaTuner</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;This class is mostly useless, just a helper for common boilerplate.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">objective_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">BaseTrial</span><span class="p">],</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="n">sampler</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">samplers</span><span class="o">.</span><span class="n">BaseSampler</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+        <span class="n">direction</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;maximize&quot;</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">study_kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">objective_function</span> <span class="o">=</span> <span class="n">objective_function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">study</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">create_study</span><span class="p">(</span>
+            <span class="n">sampler</span><span class="o">=</span><span class="p">(</span><span class="n">sampler</span> <span class="ow">or</span> <span class="n">samplers</span><span class="o">.</span><span class="n">RandomSampler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)),</span>
+            <span class="n">direction</span><span class="o">=</span><span class="n">direction</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">study_kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">objective_function</span><span class="o">.</span><span class="n">results</span>
+
+<div class="viewcode-block" id="OptunaTuner.optimize">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.tuner.OptunaTuner.optimize">[docs]</a>
+    <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">study</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">objective_function</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, AndreFCruz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

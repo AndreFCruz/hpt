@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hpt.thresholding_evaluation &mdash; hyperparameter-tuning 0.3.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=4621528c"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+        <script src="../../_static/copybutton.js?v=f281be69"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script src="../../_static/custom.js?v=882eb7ae"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            hyperparameter-tuning
+          </a>
+              <div class="version">
+                0.3.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example-usage.html">Example usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../readme.html">Readme file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_ref/modules.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">hyperparameter-tuning</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">hpt.thresholding_evaluation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for hpt.thresholding_evaluation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Set of util functions to generate group-wise thresholds that enforce</span>
+<span class="sd">some fairness criteria (or even just to maximize global performance).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">tqdm.auto</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">roc_curve</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">ParameterGrid</span>
+
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+
+<span class="k">def</span> <span class="nf">_group_key</span><span class="p">(</span><span class="n">group</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Util function to compute a unique group identifier from its sensitive</span>
+<span class="sd">    attribute value.</span>
+
+<span class="sd">    Right now we just stringify the value, but eventually we could map it to</span>
+<span class="sd">    strings with some meaning, e.g., 0 -&gt; &#39;Male&#39;, 1 -&gt; &#39;Female&#39;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ThresholdingEvaluation">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.thresholding_evaluation.ThresholdingEvaluation">[docs]</a>
+<span class="k">class</span> <span class="nc">ThresholdingEvaluation</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">s_true</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_true</span> <span class="o">=</span> <span class="n">y_true</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">s_true</span> <span class="o">=</span> <span class="n">s_true</span>
+
+        <span class="c1"># Statistics for evaluation data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unique_groups</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">s_true</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unique_group_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">_group_key</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_groups</span><span class="p">]</span>
+
+        <span class="c1"># Number of samples per group</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">group_sizes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">_group_key</span><span class="p">(</span><span class="n">g</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">s_true</span> <span class="o">==</span> <span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_groups</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Number of Label Positive samples per group</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">group_lps</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">_group_key</span><span class="p">(</span><span class="n">g</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">y_true</span><span class="p">[</span><span class="n">s_true</span> <span class="o">==</span> <span class="n">g</span><span class="p">])</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_groups</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Number of Label Negative samples per group</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">group_lns</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">_group_key</span><span class="p">(</span><span class="n">g</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_true</span><span class="p">)[</span><span class="n">s_true</span> <span class="o">==</span> <span class="n">g</span><span class="p">])</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_groups</span>
+        <span class="p">}</span>
+
+        <span class="c1"># sanity check</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span> <span class="o">==</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">group_sizes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span> <span class="o">==</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">group_lps</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">group_lns</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="ThresholdingEvaluation.compute_global_accuracy">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.thresholding_evaluation.ThresholdingEvaluation.compute_global_accuracy">[docs]</a>
+    <span class="k">def</span> <span class="nf">compute_global_accuracy</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">groupwise_fpr</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">groupwise_tpr</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Computes global accuracy from groupwise FPR and TPR metrics.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        groupwise_fpr : dict</span>
+<span class="sd">            A dictionary that maps a group to its FPR value.</span>
+<span class="sd">        groupwise_tpr : dict</span>
+<span class="sd">            A dictionary that maps a group to its TPR value.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            The value for global accuracy, between 0.0 and 1.0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total_tps</span><span class="p">,</span> <span class="n">total_tns</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">group_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_group_keys</span><span class="p">:</span>
+            <span class="c1"># Compute TNs for group g</span>
+            <span class="c1"># TN = TNR * LN = (1-FPR) * LN</span>
+            <span class="n">group_tns</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">groupwise_fpr</span><span class="p">[</span><span class="n">group_name</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_lns</span><span class="p">[</span><span class="n">group_name</span><span class="p">]</span>
+            <span class="n">total_tns</span> <span class="o">+=</span> <span class="n">group_tns</span>
+
+            <span class="c1"># Compute TPs for group g</span>
+            <span class="n">group_tps</span> <span class="o">=</span> <span class="n">groupwise_tpr</span><span class="p">[</span><span class="n">group_name</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_lps</span><span class="p">[</span><span class="n">group_name</span><span class="p">]</span>
+            <span class="n">total_tps</span> <span class="o">+=</span> <span class="n">group_tps</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">total_tps</span> <span class="o">+</span> <span class="n">total_tns</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_samples</span></div>
+
+
+<div class="viewcode-block" id="ThresholdingEvaluation.post_hoc_fairness">
+<a class="viewcode-back" href="../../api_ref/hpt.html#hpt.thresholding_evaluation.ThresholdingEvaluation.post_hoc_fairness">[docs]</a>
+    <span class="k">def</span> <span class="nf">post_hoc_fairness</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">y_pred_scores</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">equal_fpr</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">equal_tpr</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">fpr_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">,</span>
+        <span class="n">tpr_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">,</span>
+        <span class="n">n_thresholds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="n">show_progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">plot_rocs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">equal_fpr</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">equal_tpr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Maximizing global accuracy with no fairness criteria enforced.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">roc_curves</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">g_name</span><span class="p">,</span> <span class="n">g_val</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unique_group_keys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_groups</span><span class="p">):</span>
+            <span class="n">group_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_true</span> <span class="o">==</span> <span class="n">g_val</span>
+            <span class="n">group_y_true</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_true</span><span class="p">[</span><span class="n">group_mask</span><span class="p">]</span>
+            <span class="n">group_y_scores</span> <span class="o">=</span> <span class="n">y_pred_scores</span><span class="p">[</span><span class="n">group_mask</span><span class="p">]</span>
+
+            <span class="c1"># This computes a triplet of (FPRs, TPRs, thresholds)</span>
+            <span class="n">fpr</span><span class="p">,</span> <span class="n">tpr</span><span class="p">,</span> <span class="n">thresholds</span> <span class="o">=</span> <span class="n">roc_curve</span><span class="p">(</span><span class="n">group_y_true</span><span class="p">,</span> <span class="n">group_y_scores</span><span class="p">)</span>
+
+            <span class="c1"># Keep only n thresholds</span>
+            <span class="n">group_n_thresholds</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">n_thresholds</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">thresholds</span><span class="p">))</span>
+            <span class="n">keep_indices</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">i</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">thresholds</span><span class="p">)</span> <span class="o">//</span> <span class="n">group_n_thresholds</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">group_n_thresholds</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="n">fpr</span><span class="p">,</span> <span class="n">tpr</span><span class="p">,</span> <span class="n">thresholds</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">fpr</span><span class="p">[</span><span class="n">keep_indices</span><span class="p">],</span>
+                <span class="n">tpr</span><span class="p">[</span><span class="n">keep_indices</span><span class="p">],</span>
+                <span class="n">thresholds</span><span class="p">[</span><span class="n">keep_indices</span><span class="p">],</span>
+            <span class="p">)</span>
+
+            <span class="n">roc_curves</span><span class="p">[</span><span class="n">g_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">fpr</span><span class="p">,</span> <span class="n">tpr</span><span class="p">,</span> <span class="n">thresholds</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">plot_rocs</span><span class="p">:</span>
+                <span class="n">sns</span><span class="o">.</span><span class="n">lineplot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">fpr</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">tpr</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;group=</span><span class="si">{</span><span class="n">g_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># TODO: add randomized thresholds in the future</span>
+        <span class="n">search_space</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">g_name</span><span class="p">:</span> <span class="p">[(</span><span class="n">fprs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">tprs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">thresholds</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">thresholds</span><span class="p">))]</span>
+            <span class="k">for</span> <span class="n">g_name</span><span class="p">,</span> <span class="p">(</span><span class="n">fprs</span><span class="p">,</span> <span class="n">tprs</span><span class="p">,</span> <span class="n">thresholds</span><span class="p">)</span> <span class="ow">in</span> <span class="n">roc_curves</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+
+        <span class="n">param_iterator</span> <span class="o">=</span> <span class="n">ParameterGrid</span><span class="p">(</span><span class="n">search_space</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">accuracy_helper</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">groupwise_fpr</span> <span class="o">=</span> <span class="p">{</span><span class="n">g_name</span><span class="p">:</span> <span class="n">fpr</span> <span class="k">for</span> <span class="n">g_name</span><span class="p">,</span> <span class="p">(</span><span class="n">fpr</span><span class="p">,</span> <span class="n">_tpr</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="n">groupwise_tpr</span> <span class="o">=</span> <span class="p">{</span><span class="n">g_name</span><span class="p">:</span> <span class="n">tpr</span> <span class="k">for</span> <span class="n">g_name</span><span class="p">,</span> <span class="p">(</span><span class="n">_fpr</span><span class="p">,</span> <span class="n">tpr</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="c1"># groupwise_threshold = {g: params[g][2] for g in unique_group_keys}</span>
+
+            <span class="c1"># Check if fairness criteria is fulfilled</span>
+            <span class="n">fpr_disp</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">groupwise_fpr</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">-</span> <span class="nb">min</span><span class="p">(</span><span class="n">groupwise_fpr</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="n">tpr_disp</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">groupwise_tpr</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">-</span> <span class="nb">min</span><span class="p">(</span><span class="n">groupwise_tpr</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+            <span class="k">if</span> <span class="n">equal_fpr</span> <span class="ow">and</span> <span class="n">fpr_disp</span> <span class="o">&gt;</span> <span class="n">fpr_tolerance</span><span class="p">:</span>
+                <span class="n">acc</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>  <span class="c1"># does not fulfill FPR equality</span>
+
+            <span class="k">elif</span> <span class="n">equal_tpr</span> <span class="ow">and</span> <span class="n">tpr_disp</span> <span class="o">&gt;</span> <span class="n">tpr_tolerance</span><span class="p">:</span>
+                <span class="n">acc</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>  <span class="c1"># does not fulfill TPR equality</span>
+
+            <span class="c1"># TODO: account for randomized thresholds here...</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># If criteria are fulfilled, compute global accuracy for these parameters</span>
+                <span class="n">acc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_global_accuracy</span><span class="p">(</span>
+                    <span class="n">groupwise_fpr</span><span class="o">=</span><span class="n">groupwise_fpr</span><span class="p">,</span>
+                    <span class="n">groupwise_tpr</span><span class="o">=</span><span class="n">groupwise_tpr</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">return</span> <span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="p">(</span><span class="n">fpr_disp</span><span class="p">,</span> <span class="n">tpr_disp</span><span class="p">),</span> <span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># NOTE: distributing this task actually slows it down,</span>
+        <span class="c1"># - there are too many small tasks,</span>
+        <span class="c1"># - distribution over processes requires pickling each (function, iter) pair</span>
+        <span class="c1"># - pickling overhead is way higher than the whole function call runtime</span>
+        <span class="c1"># with ThreadPoolExecutor(n_jobs) as executor:</span>
+        <span class="c1">#     accuracies = executor.map(accuracy_helper, param_iterator)</span>
+        <span class="c1"># accuracies = list(accuracies)</span>
+
+        <span class="k">if</span> <span class="n">show_progress</span><span class="p">:</span>
+            <span class="n">accuracies</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span>
+                <span class="nb">map</span><span class="p">(</span><span class="n">accuracy_helper</span><span class="p">,</span> <span class="n">param_iterator</span><span class="p">),</span>
+                <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">param_iterator</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">accuracies</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">accuracy_helper</span><span class="p">,</span> <span class="n">param_iterator</span><span class="p">)</span>
+
+        <span class="n">accuracies</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">accuracies</span><span class="p">)</span>
+
+        <span class="c1"># Select point that maximizes accuracy while fulfilling fairness criteria</span>
+        <span class="n">max_accu_result</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">accuracies</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">plot_rocs</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">params</span> <span class="o">=</span> <span class="n">max_accu_result</span>
+
+            <span class="k">for</span> <span class="n">g_name</span><span class="p">,</span> <span class="n">marker</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unique_group_keys</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;^&quot;</span><span class="p">,</span> <span class="s2">&quot;P&quot;</span><span class="p">,</span> <span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">]):</span>
+                <span class="n">point</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">g_name</span><span class="p">]</span>
+                <span class="n">sns</span><span class="o">.</span><span class="n">scatterplot</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="p">[</span><span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
+                    <span class="n">y</span><span class="o">=</span><span class="p">[</span><span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="n">marker</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;$t_</span><span class="si">{</span><span class="n">g_name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">point</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">0&lt;5.3</span><span class="si">}</span><span class="s2">$&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;FPR&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;TPR&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Group-wise ROC curves&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Let&#39;s not call show() just yet so the user can do further</span>
+            <span class="c1"># modifications to the plot</span>
+            <span class="c1"># plt.show()</span>
+
+        <span class="k">return</span> <span class="n">max_accu_result</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, AndreFCruz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

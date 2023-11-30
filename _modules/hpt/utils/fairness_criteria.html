@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hpt.utils.fairness_criteria &mdash; hyperparameter-tuning 0.3.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=4621528c"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+        <script src="../../../_static/copybutton.js?v=f281be69"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script src="../../../_static/custom.js?v=882eb7ae"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            hyperparameter-tuning
+          </a>
+              <div class="version">
+                0.3.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/example-usage.html">Example usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../readme.html">Readme file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api_ref/modules.html">API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">hyperparameter-tuning</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">hpt.utils.fairness_criteria</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for hpt.utils.fairness_criteria</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Computing fairness criteria on data.</span>
+
+<span class="sd">File extracted from: https://github.com/fairmlbook/fairmlbook.github.io/blob/master/code/creditscore/criteria.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c1"># flake8: noqa</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">Delaunay</span>
+
+
+<div class="viewcode-block" id="first_index_above">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.first_index_above">[docs]</a>
+<span class="k">def</span> <span class="nf">first_index_above</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find the smallest index i for which array[i] &gt; value.</span>
+
+<span class="sd">    If no such value exists, return len(array).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">array</span> <span class="o">&gt;</span> <span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:])])</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="trisearch_int">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.trisearch_int">[docs]</a>
+<span class="k">def</span> <span class="nf">trisearch_int</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trinary search: minimize f(x) over [lo, hi], to within +/-tol in x.</span>
+
+<span class="sd">    Works assuming f is quasiconvex.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">while</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span> <span class="o">&gt;</span> <span class="n">tol</span><span class="p">:</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">hi</span><span class="p">)</span> <span class="o">//</span> <span class="mi">3</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="p">(</span><span class="n">lo</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">hi</span><span class="p">)</span> <span class="o">//</span> <span class="mi">3</span>
+        <span class="k">if</span> <span class="n">f</span><span class="p">(</span><span class="n">m1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">f</span><span class="p">(</span><span class="n">m2</span><span class="p">):</span>
+            <span class="n">hi</span> <span class="o">=</span> <span class="n">m2</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lo</span> <span class="o">=</span> <span class="n">m1</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">hi</span> <span class="o">+</span> <span class="n">lo</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="trisearch">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.trisearch">[docs]</a>
+<span class="k">def</span> <span class="nf">trisearch</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">tol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trinary search: minimize f(x) over [lo, hi], to within +/-tol in x.</span>
+
+<span class="sd">    Works assuming f is quasiconvex.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">while</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span> <span class="o">&gt;</span> <span class="n">tol</span><span class="p">:</span>
+        <span class="n">m1</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">hi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="p">(</span><span class="n">lo</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">hi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span>
+        <span class="k">if</span> <span class="n">f</span><span class="p">(</span><span class="n">m1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">f</span><span class="p">(</span><span class="n">m2</span><span class="p">):</span>
+            <span class="n">hi</span> <span class="o">=</span> <span class="n">m2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lo</span> <span class="o">=</span> <span class="n">m1</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">hi</span> <span class="o">+</span> <span class="n">lo</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="CriteriaData">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData">[docs]</a>
+<span class="k">class</span> <span class="nc">CriteriaData</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class for computing fairness criteria of data.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdfs</span><span class="p">,</span> <span class="n">performance</span><span class="p">,</span> <span class="n">totals</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a CriteriaData instance from marginals.</span>
+
+<span class="sd">        cdfs and performance are both dataframes, with index = score and columns being the groups.</span>
+
+<span class="sd">        cdfs[group][score] = fraction of people of that group with score below that score.</span>
+<span class="sd">        performance[group][score] = fraction of people with that group &amp; score that succeed.</span>
+<span class="sd">        totals[group] = total number of people of that group.</span>
+
+<span class="sd">        totals can be either a dictionary or an array (if an array, in the same order as cdfs.columns)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span> <span class="o">=</span> <span class="n">cdfs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance</span> <span class="o">=</span> <span class="n">performance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">totals</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">totals</span> <span class="o">=</span> <span class="p">[</span><span class="n">totals</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">totals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">totals</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flipped</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pdfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_pdfs</span><span class="p">()</span>
+
+<div class="viewcode-block" id="CriteriaData.get_pdfs">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.get_pdfs">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_pdfs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cdf_vs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])],</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">values</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">pdf_vs</span> <span class="o">=</span> <span class="n">cdf_vs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">cdf_vs</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">pdf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pdf_vs</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pdf</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">trisearch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="s2">&quot;int64&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">trisearch_int</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">trisearch</span>
+
+<div class="viewcode-block" id="CriteriaData.from_individuals">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.from_individuals">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_individuals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">binsize</span><span class="o">=</span><span class="mf">0.025</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recover CriteriaData instance from individual performances.</span>
+
+<span class="sd">        data should be a dataframe with three columns: the group key, the</span>
+<span class="sd">        predictor score, and the result.  Scores will be binned into</span>
+<span class="sd">        bins of size binsize to compute the performance per group/score.</span>
+
+<span class="sd">        groups is the set of group keys to use; it may be specified to</span>
+<span class="sd">        restrict the set, or to define the order.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">groupkey</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">result</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">if</span> <span class="n">groups</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">groups</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">groupkey</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">score</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">score</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">score</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">score</span><span class="p">]</span> <span class="o">/</span> <span class="n">binsize</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">datasets</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">cdfs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="n">index</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">score</span><span class="p">]),</span> <span class="nb">max</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">score</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="n">groups</span>
+        <span class="p">)</span>
+        <span class="n">performance</span> <span class="o">=</span> <span class="n">cdfs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cdfs</span> <span class="o">=</span> <span class="n">cdfs</span><span class="o">.</span><span class="n">notnull</span><span class="p">()</span> <span class="o">*</span> <span class="mi">0</span>
+        <span class="n">totals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">:</span>
+            <span class="n">grouped</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">groupkey</span><span class="p">]</span> <span class="o">==</span> <span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">score</span><span class="p">)</span>
+            <span class="n">num_per_score</span> <span class="o">=</span> <span class="n">grouped</span><span class="o">.</span><span class="n">count</span><span class="p">()[</span><span class="n">result</span><span class="p">]</span>
+            <span class="n">totals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">num_per_score</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+            <span class="n">cdfs</span><span class="p">[</span><span class="n">group</span><span class="p">][</span><span class="n">num_per_score</span><span class="o">.</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_per_score</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">cdfs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">cdfs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span> <span class="o">*</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">cdfs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">performance</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">grouped</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">cdfs</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">cdfs</span><span class="o">.</span><span class="n">index</span> <span class="o">*</span> <span class="n">binsize</span>
+        <span class="n">performance</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">performance</span><span class="o">.</span><span class="n">index</span> <span class="o">*</span> <span class="n">binsize</span>
+        <span class="n">performance</span> <span class="o">=</span> <span class="n">performance</span><span class="o">.</span><span class="n">interpolate</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Remove nans</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">(</span><span class="n">cdfs</span><span class="p">,</span> <span class="n">performance</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">totals</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.profit_cutoffs">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.profit_cutoffs">[docs]</a>
+    <span class="k">def</span> <span class="nf">profit_cutoffs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">,</span> <span class="n">_</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">losses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_area_slices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">performance</span> <span class="o">-</span> <span class="n">target_rate</span><span class="p">))</span>
+        <span class="n">ans</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">last_bad_row</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">losses</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cutoff</span> <span class="o">=</span> <span class="n">losses</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">last_bad_row</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+                <span class="n">cutoff</span> <span class="o">=</span> <span class="n">losses</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1e-9</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">flipped</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1e-9</span><span class="p">)</span>
+            <span class="n">ans</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">cutoff</span>
+        <span class="k">return</span> <span class="n">ans</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.compute_area_slices">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.compute_area_slices">[docs]</a>
+    <span class="k">def</span> <span class="nf">compute_area_slices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdfs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">performance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">performance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance</span>
+        <span class="k">if</span> <span class="n">pdfs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pdfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdfs</span>
+        <span class="n">perf</span> <span class="o">=</span> <span class="n">performance</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">return</span> <span class="n">pdfs</span> <span class="o">*</span> <span class="n">perf</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.compute_area">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.compute_area">[docs]</a>
+    <span class="k">def</span> <span class="nf">compute_area</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoffs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">performance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">performance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance</span>
+        <span class="k">if</span> <span class="n">cutoffs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_area_slices</span><span class="p">(</span><span class="n">performance</span><span class="o">=</span><span class="n">performance</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ans</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">area</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_area_slices</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pdfs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">cutoffs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="p">:],</span>
+                    <span class="n">performance</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">cutoffs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="p">:],</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">ans</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">area</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ans</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.compute_curves">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.compute_curves">[docs]</a>
+    <span class="k">def</span> <span class="nf">compute_curves</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dfs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">performance</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance</span><span class="p">]:</span>
+            <span class="n">area_slices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_area_slices</span><span class="p">(</span><span class="n">performance</span><span class="o">=</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+            <span class="c1"># area_slices = np.vstack([np.zeros_like(area_slices[0]), area_slices])</span>
+            <span class="n">under_curve</span> <span class="o">=</span> <span class="n">area_slices</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">fraction_excluded</span> <span class="o">=</span> <span class="n">area_slices</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">under_curve</span>
+            <span class="n">dfs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                    <span class="mi">1</span> <span class="o">-</span> <span class="n">fraction_excluded</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">dfs</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.score_two_sided_profit">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.score_two_sided_profit">[docs]</a>
+    <span class="k">def</span> <span class="nf">score_two_sided_profit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">):</span>
+        <span class="n">profit</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">fraction_nondefaulters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_area</span><span class="p">()</span>
+        <span class="n">losses</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">fraction_nondefaulters</span><span class="p">)</span> <span class="o">*</span> <span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">target_rate</span>
+        <span class="n">gains</span> <span class="o">=</span> <span class="n">fraction_nondefaulters</span> <span class="o">*</span> <span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">target_rate</span><span class="p">)</span>
+        <span class="n">profit</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">totals</span> <span class="o">*</span> <span class="p">(</span><span class="n">gains</span> <span class="o">-</span> <span class="n">losses</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">profit</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.two_sided_optimum">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.two_sided_optimum">[docs]</a>
+    <span class="k">def</span> <span class="nf">two_sided_optimum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">):</span>
+        <span class="n">good_frac</span><span class="p">,</span> <span class="n">bad_frac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_curves</span><span class="p">()</span>
+        <span class="n">polygons</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Delaunay</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">good_frac</span><span class="p">[</span><span class="n">group</span><span class="p">],</span> <span class="n">bad_frac</span><span class="p">[</span><span class="n">group</span><span class="p">])))</span>
+            <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">]</span>
+        <span class="n">valid_points</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">poly</span> <span class="ow">in</span> <span class="n">polygons</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">poly</span><span class="o">.</span><span class="n">points</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">poly2</span><span class="o">.</span><span class="n">find_simplex</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">for</span> <span class="n">poly2</span> <span class="ow">in</span> <span class="n">polygons</span><span class="p">):</span>
+                    <span class="n">valid_points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="n">valid_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">valid_points</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">valid_points</span><span class="p">:</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">score_two_sided_profit</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_find_other_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">curvex</span><span class="p">,</span> <span class="n">curvey</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">curvex</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">curvex</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">curvex</span> <span class="o">=</span> <span class="n">curvex</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">curvey</span> <span class="o">=</span> <span class="n">curvey</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">i</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">curvex</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span>
+            <span class="n">invert</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">j</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">curvex</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">j</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">invert</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">j</span><span class="p">:</span> <span class="n">j</span>
+
+        <span class="n">me</span> <span class="o">=</span> <span class="p">(</span><span class="n">curvex</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">curvey</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">me</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">lst</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lst</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">curvex</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">lst</span><span class="p">:</span>
+            <span class="n">they</span> <span class="o">=</span> <span class="p">(</span><span class="n">curvex</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">curvey</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+            <span class="n">ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">me</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">they</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">me</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">assert</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="n">midy</span> <span class="o">=</span> <span class="n">ratio</span> <span class="o">*</span> <span class="p">(</span><span class="n">they</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">me</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">me</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">midy</span> <span class="o">&gt;</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="n">invert</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CriteriaData.two_sided_ranges">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.two_sided_ranges">[docs]</a>
+    <span class="k">def</span> <span class="nf">two_sided_ranges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
+        <span class="n">ans</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">good_frac</span><span class="p">,</span> <span class="n">bad_frac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_curves</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">polygon</span> <span class="o">=</span> <span class="n">Delaunay</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">good_frac</span><span class="p">[</span><span class="n">group</span><span class="p">],</span> <span class="n">bad_frac</span><span class="p">[</span><span class="n">group</span><span class="p">])))</span>
+            <span class="n">vertices</span> <span class="o">=</span> <span class="n">polygon</span><span class="o">.</span><span class="n">simplices</span><span class="p">[</span><span class="n">polygon</span><span class="o">.</span><span class="n">find_simplex</span><span class="p">(</span><span class="n">p</span><span class="p">)]</span>
+            <span class="n">vert_to_pair</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">good_frac</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">v</span><span class="p">],</span>
+                <span class="n">bad_frac</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">v</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">vert_to_pair</span><span class="p">,</span> <span class="n">vertices</span><span class="p">))</span>
+            <span class="n">answer</span> <span class="o">=</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">vals</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">vals</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">polygon</span><span class="o">.</span><span class="n">points</span><span class="p">[</span><span class="n">v</span><span class="p">])</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">1e-3</span><span class="p">:</span>
+                    <span class="n">val</span> <span class="o">=</span> <span class="n">vert_to_pair</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                    <span class="n">answer</span> <span class="o">=</span> <span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+                    <span class="k">break</span>
+                <span class="n">j</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_other_endpoint</span><span class="p">(</span>
+                    <span class="n">good_frac</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">bad_frac</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">p</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">j</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">vals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">vert_to_pair</span><span class="p">,</span> <span class="p">[</span><span class="n">v</span><span class="p">,</span> <span class="n">j</span><span class="p">]))</span>
+                <span class="n">answer2</span> <span class="o">=</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">vals</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">vals</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">answer2</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">answer2</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="nb">abs</span><span class="p">(</span>
+                    <span class="n">answer</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">answer</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                <span class="p">):</span>
+                    <span class="n">answer</span> <span class="o">=</span> <span class="n">answer2</span>
+            <span class="n">ans</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">answer</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">answer</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">ans</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.evaluate_opportunity">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.evaluate_opportunity">[docs]</a>
+    <span class="k">def</span> <span class="nf">evaluate_opportunity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoffs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cutoffs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">cutoffs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_area</span><span class="p">(</span><span class="n">cutoffs</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_area</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.opportunity_cutoffs">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.opportunity_cutoffs">[docs]</a>
+    <span class="k">def</span> <span class="nf">opportunity_cutoffs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">,</span> <span class="n">target_is_profit</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">target_is_profit</span><span class="p">:</span>
+            <span class="n">target_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_best_opportunity</span><span class="p">(</span><span class="n">target_rate</span><span class="p">)</span>
+        <span class="n">ans</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">cumulative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_area_slices</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">goal_area</span> <span class="o">=</span> <span class="n">cumulative</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">target_rate</span><span class="p">)</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">first_index_above</span><span class="p">(</span><span class="n">cumulative</span><span class="p">,</span> <span class="n">goal_area</span><span class="p">)</span>
+        <span class="n">cutoffs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">cutoffs</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.demographic_cutoffs">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.demographic_cutoffs">[docs]</a>
+    <span class="k">def</span> <span class="nf">demographic_cutoffs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">,</span> <span class="n">target_is_profit</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">target_is_profit</span><span class="p">:</span>
+            <span class="n">target_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_best_demographic</span><span class="p">(</span><span class="n">target_rate</span><span class="p">)</span>
+        <span class="n">ans</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">first_index_above</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">target_rate</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">cutoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span>
+            <span class="n">ans</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="n">cutoff</span>
+        <span class="k">return</span> <span class="n">ans</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.fixed_cutoffs">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.fixed_cutoffs">[docs]</a>
+    <span class="k">def</span> <span class="nf">fixed_cutoffs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">,</span> <span class="n">target_is_profit</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">target_is_profit</span><span class="p">:</span>
+            <span class="n">target_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_best_fixed</span><span class="p">(</span><span class="n">target_rate</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">r</span><span class="p">:</span> <span class="n">target_rate</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.compute_profit">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.compute_profit">[docs]</a>
+    <span class="k">def</span> <span class="nf">compute_profit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoffs</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cutoffs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="c1"># Hack, where we get the right answer for two-sided equality</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">score_two_sided_profit</span><span class="p">(</span><span class="n">cutoffs</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">)</span>
+        <span class="n">profits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_area</span><span class="p">(</span><span class="n">cutoffs</span><span class="p">,</span> <span class="n">performance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">performance</span> <span class="o">-</span> <span class="n">target_rate</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">profits</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">totals</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.efficiency">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.efficiency">[docs]</a>
+    <span class="k">def</span> <span class="nf">efficiency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoffs</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_profit</span><span class="p">(</span><span class="n">cutoffs</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_profit</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">profit_cutoffs</span><span class="p">(</span><span class="n">target_rate</span><span class="p">),</span> <span class="n">target_rate</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.get_best_opportunity">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.get_best_opportunity">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_best_opportunity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">trisearch</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_profit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opportunity_cutoffs</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="n">target_rate</span><span class="p">),</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">,</span>
+            <span class="mf">1e-3</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.get_best_fixed">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.get_best_fixed">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_best_fixed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trisearch</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_profit</span><span class="p">({</span><span class="n">r</span><span class="p">:</span> <span class="n">t</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">},</span> <span class="n">target_rate</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span>
+            <span class="mf">1e-3</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.get_best_demographic">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.get_best_demographic">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_best_demographic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_rate</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">trisearch</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_profit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">demographic_cutoffs</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="n">target_rate</span><span class="p">),</span>
+            <span class="mi">0</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">,</span>
+            <span class="mf">1e-3</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CriteriaData.coverage">
+<a class="viewcode-back" href="../../../api_ref/hpt.utils.html#hpt.utils.fairness_criteria.CriteriaData.coverage">[docs]</a>
+    <span class="k">def</span> <span class="nf">coverage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cutoffs</span><span class="p">):</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">covered</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">group</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cutoffs</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">totals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">covered</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">totals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">cdfs</span><span class="p">[</span><span class="n">group</span><span class="p">][</span><span class="n">cutoffs</span><span class="p">[</span><span class="n">group</span><span class="p">]])</span>
+        <span class="k">return</span> <span class="n">covered</span> <span class="o">/</span> <span class="n">total</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, AndreFCruz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

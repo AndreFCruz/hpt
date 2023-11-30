@@ -17,7 +17,7 @@ Check out the following sub-pages:
 .. toctree::
    :maxdepth: 1
 
-   Example usage<example_usage>
+   Example usage<examples/example-usage>
    Readme file <readme>
    API reference <api_ref/modules>
 

@@ -12,8 +12,8 @@ from .binarize import compute_binary_predictions
 from .utils.dict import join_dictionaries
 
 
-def safe_division(a: float, b: float):
-    return 0 if b == 0 else a / b
+def safe_division(a: float, b: float, on_error_return=0):
+    return on_error_return if b == 0 else a / b
 
 
 def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
@@ -51,24 +51,24 @@ def evaluate_performance(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     results["accuracy"] = (tp + tn) / total
 
     # True Positive Rate (Recall)
-    results["tpr"] = safe_division(tp, label_pos)
+    results["tpr"] = safe_division(tp, label_pos, on_error_return=0)
 
     # False Negative Rate (1 - TPR)
-    results["fnr"] = safe_division(fn, label_pos)
+    results["fnr"] = safe_division(fn, label_pos, on_error_return=1)
     assert results["tpr"] + results["fnr"] == 1
 
     # False Positive Rate
-    results["fpr"] = safe_division(fp, label_neg)
+    results["fpr"] = safe_division(fp, label_neg, on_error_return=1)
 
     # True Negative Rate
-    results["tnr"] = safe_division(tn, label_neg)
+    results["tnr"] = safe_division(tn, label_neg, on_error_return=0)
     assert results["tnr"] + results["fpr"] == 1
 
     # Precision
-    results["precision"] = safe_division(tp, pred_pos)
+    results["precision"] = safe_division(tp, pred_pos, on_error_return=0)
 
     # Positive Prediction Rate
-    results["ppr"] = safe_division(pred_pos, total)
+    results["ppr"] = safe_division(pred_pos, total, on_error_return=0)
 
     return results
 
@@ -148,7 +148,8 @@ def evaluate_fairness(
         # - i.e., min(curr_metric_results) / global_curr_metric_result;
         # - same question for the absolute diff calculations;
         results[ratio_name] = safe_division(
-            min(curr_metric_results), max(curr_metric_results)
+            min(curr_metric_results), max(curr_metric_results),
+            on_error_return=0,
         )
 
         # Metrics' absolute difference
